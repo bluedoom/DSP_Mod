@@ -6,6 +6,7 @@
   |50MB 0.8s|30MB 0.2s|
   |220M 3.6s|147M 0.7s|
   |1010M 19.1s|690M 3.6s|
+  
   HDD + i7-4790K@4.4G + DDR3 2400MHz
 ## 安装
   解压至 [游戏根目录/BepInEx/plugins] 文件夹.(依赖 [BepinEx] )
