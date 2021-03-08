@@ -1,0 +1,95 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+using MonoMod.Utils;
+namespace LZ4
+{
+
+    public struct DecompressStatus
+    {
+        public long writeLen;
+        public long readLen;
+        public long expect;
+    }
+
+    public static class LZ4API
+    {
+        static LZ4API()
+        {
+            var map = new Dictionary<string, List<DynDllMapping>>
+            {
+                { "lz4.dll" ,new List<DynDllMapping>{
+                    "LZ4.dll",
+                    "X64/LZ4.dll",
+                    "BepInEx/scripts/x64/LZ4.dll",
+                    "BepInEx/plugins/x64/LZ4.dll"
+                } },
+            };
+            //DynDll.OpenLibrary("")
+            typeof(LZ4API).ResolveDynDllImports(map);
+        }
+
+        public delegate long _CalCompressOutBufferSize(long inBufferSize);
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _CalCompressOutBufferSize CalCompressOutBufferSize;
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _CompressBegin CompressBegin;
+        public delegate long _CompressBegin(out IntPtr ctx, byte[] outBuff, long outCapacity, byte[] dictBuffer = null, long dictSize = 0);
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _CompressUpdate CompressUpdate;
+        public unsafe delegate long _CompressUpdate(IntPtr ctx, byte* dstBuffer, long dstCapacity, byte* srcBuffer, long srcSize);
+
+        public unsafe static long CompressUpdateEx(IntPtr ctx, byte[] dstBuffer, long dstOffset, byte[] srcBuffer, long srcOffset, long srcLen)
+        {
+            fixed (byte* pdst = dstBuffer, psrc = srcBuffer)
+            {
+                return CompressUpdate(ctx, pdst + dstOffset, dstBuffer.Length - dstOffset, psrc + srcOffset, srcLen - srcOffset);
+            }
+        }
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _FreeCompressContext FreeCompressContext;
+        public delegate void _FreeCompressContext(IntPtr ctx);
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _CompressEnd CompressEnd;
+        public delegate long _CompressEnd(IntPtr ctx, byte[] dstBuffer, long dstCapacity);
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _DecompressEnd DecompressEnd;
+        public delegate long _DecompressEnd(IntPtr dctx);
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        unsafe static _DecompressUpdate DecompressUpdate;
+        public unsafe delegate long _DecompressUpdate(IntPtr dctx, byte* dstBuffer, ref long dstCapacity, byte* srcBuffer, ref long srcSize, byte* dict, long dictSize);
+        public unsafe static DecompressStatus DecompressUpdateEx(IntPtr dctx, byte[] dstBuffer, int dstOffset, int dstCount, byte[] srcBuffer, long srcOffset, long count, byte[] dict)
+        {
+            long dstLen = Math.Min(dstCount, dstBuffer.Length - dstOffset);
+            long errCode = 0;
+            fixed (byte* pdst = dstBuffer, psrc = srcBuffer, pdict = dict)
+            {
+                errCode = DecompressUpdate(dctx, pdst + dstOffset, ref dstLen, psrc + srcOffset, ref count, pdict, dict == null ? 0 : dict.Length);
+            }
+            return new DecompressStatus
+            {
+                expect = errCode,
+                readLen = count,
+                writeLen = dstLen,
+            };
+        }
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _DecompressBegin DecompressBegin;
+        public delegate long _DecompressBegin(ref IntPtr pdctx, byte[] inBuffer, ref int inBufferSize, out int blockSize);
+
+        public delegate void _ResetDecompresssCTX(IntPtr dctx);
+
+        [DynDllImport(libraryName: "lz4.dll")]
+        public static _ResetDecompresssCTX ResetDecompresssCTX;
+    }
+
+}

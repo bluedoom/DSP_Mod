@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>9c98dd96-7e4d-4fa2-a0dc-f4fb9cec256b</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>LZ4Wrap</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BlackHoleStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)BufferWriter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DoubleBuffer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LZ4CompressionStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LZ4DecompressionStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LZ4Wrap.cs" />
+  </ItemGroup>
+</Project>
