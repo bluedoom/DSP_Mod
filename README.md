@@ -1,4 +1,6 @@
-# 存档压缩插件 SaveCompress
+# 存档压缩插件 CompressSave
+## 警告
+使用Mod可能会损坏您的存档，请注意备份存档！
 ## 简介
   减少30%存档大小|减少75%保存时间 
   |原生|压缩后|
@@ -11,7 +13,7 @@
 ## 安装
   解压至 [游戏根目录/BepInEx/plugins] 文件夹.(依赖 [BepinEx] )
   
-[BepinEx]: https://github.com/BepInEx/BepInEx/releases "BepinEx"
+[BepinEx]: https://github.com/BepInEx/BepInEx/releases
 
   首次安装插件时建议另存一个存档文件，可以正常保存/读取后再继续使用。
 ## 版本不匹配的情况
@@ -19,4 +21,7 @@
 
 2.插件会尝试解压存档文件为“[Recovery]-存档名字.dsv”，再使用原生方式加载，此过程会导致读取存档时间较长，请耐心等待。
 
-3.将存档拖拽到 UnzipSave.exe 文件会按照上述格式解压。
+3.将存档拖拽到 [UnzipSave.exe] 文件会按照上述格式解压。
+
+[UnzipSave.exe]: https://github.com/bluedoom/DSP_Mod/releases
+
