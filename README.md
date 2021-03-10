@@ -21,7 +21,8 @@
 
 2.插件会尝试解压存档文件为“[Recovery]-存档名字.dsv”，再使用原生方式加载，此过程会导致读取存档时间较长，请耐心等待。
 
-3.将存档拖拽到 [UnzipSave.exe] 文件会按照上述格式解压。
+## 手动解压存档
+  将压缩存档拖拽到 [UnzipSave.exe] ，等待Success出现。解压文件为“[Recovery]-存档名字.dsv”。
 
 [UnzipSave.exe]: https://github.com/bluedoom/DSP_Mod/releases
 

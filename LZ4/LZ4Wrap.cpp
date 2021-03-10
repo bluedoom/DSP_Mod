@@ -25,8 +25,8 @@ void FreeCompressContext(CContext* ctx)
 }
 
 const LZ4F_preferences_t kPrefs = {
-    { LZ4F_max4MB, LZ4F_blockLinked, LZ4F_noContentChecksum, LZ4F_frame,
-     0 /* unknown content size */, 0/* no dictID */ , LZ4F_noBlockChecksum },
+    { LZ4F_max4MB, LZ4F_blockLinked, LZ4F_contentChecksumEnabled, LZ4F_frame,
+     0 /* unknown content size */, 0/* no dictID */ , LZ4F_blockChecksumEnabled },
     0,   /* compression level; 0 == default */
     0,   /* autoflush */
     0,   /* favor decompression speed */

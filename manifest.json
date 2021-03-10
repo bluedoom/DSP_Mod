@@ -1,0 +1,7 @@
+{
+    "name": "CompressSave",
+    "version_number": "0.1.2",
+    "website_url": "https://github.com/bluedoom/DSP_Mod",
+    "description": "压缩存档，优化写入速度|Compress Save File and Optimize the write Speed.",
+    "dependencies": []
+}
