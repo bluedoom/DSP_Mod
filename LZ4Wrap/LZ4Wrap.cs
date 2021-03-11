@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using MonoMod.Utils;
@@ -17,16 +18,17 @@ namespace LZ4
     {
         static LZ4API()
         {
+            string root = Path.GetDirectoryName(System.Reflection.Assembly.GetAssembly(typeof(LZ4API)).Location);
+
             var map = new Dictionary<string, List<DynDllMapping>>
             {
                 { "lz4.dll" ,new List<DynDllMapping>{
                     "LZ4.dll",
                     "X64/LZ4.dll",
-                    "BepInEx/scripts/x64/LZ4.dll",
-                    "BepInEx/plugins/x64/LZ4.dll"
+                    Path.Combine(root,"X64/LZ4.dll"),
+                    Path.Combine(root,"LZ4.dll")
                 } },
             };
-            //DynDll.OpenLibrary("")
             typeof(LZ4API).ResolveDynDllImports(map);
         }
 
