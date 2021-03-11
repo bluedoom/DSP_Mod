@@ -1,0 +1,21 @@
+{
+    "ManifestVersion": 2,
+    "Name": "CompressSave",
+    "AuthorName": "bluedoom",
+    "DisplayName": "Compress Save",
+    "Version": "0.1.3",
+    "Licence": "MIT",
+    "WebsiteURL": "https://github.com/bluedoom/DSP_Mod",
+    "Description": "压缩存档，优化写入速度|Compress Save File and Optimize the write Speed.",
+    "GameVersion": "0.6.17",
+    "Dependencies": ["xiaoye97-BepInEx-5.4.5"],
+    "OptionalDependencies": [],
+    "Incompatibilities": [],
+    "NetworkMode": "both",
+    "PackageType": "mod",
+    "InstallMode": "managed",
+    "Loaders": [
+        "bepinex"
+    ],
+    "ExtraData": {}
+}

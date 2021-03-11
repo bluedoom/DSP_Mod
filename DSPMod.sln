@@ -14,6 +14,8 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "LZ4Wrap", "LZ4Wrap\LZ4Wrap.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompressSave", "CompressSave\CompressSave.csproj", "{E3A31396-1C3E-4FEF-A620-C64BF3BFE1F1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsyncUpdate", "AsyncUpdate\AsyncUpdate.csproj", "{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		LZ4Wrap\LZ4Wrap.projitems*{7b39e715-fef4-4848-b869-f64068cbb3e4}*SharedItemsImports = 4
@@ -61,6 +63,18 @@ Global
 		{E3A31396-1C3E-4FEF-A620-C64BF3BFE1F1}.Release|x64.Build.0 = Release|Any CPU
 		{E3A31396-1C3E-4FEF-A620-C64BF3BFE1F1}.Release|x86.ActiveCfg = Release|Any CPU
 		{E3A31396-1C3E-4FEF-A620-C64BF3BFE1F1}.Release|x86.Build.0 = Release|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Debug|x64.Build.0 = Debug|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Debug|x86.Build.0 = Debug|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Release|x64.ActiveCfg = Release|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Release|x64.Build.0 = Release|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Release|x86.ActiveCfg = Release|Any CPU
+		{5CF8987C-FBD3-4497-B0AD-8BDBD7097D00}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
