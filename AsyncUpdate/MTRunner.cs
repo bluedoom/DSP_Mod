@@ -6,18 +6,28 @@ using System.Threading;
 
 namespace AsyncUpdate
 {
+    public static class MTInfo
+    {
+        public readonly static int ProcessorCount;
+        static MTInfo(){
+            Console.WriteLine($"Environment.ProcessorCount{Environment.ProcessorCount}");
+            ProcessorCount = Environment.ProcessorCount;
+            ThreadPool.GetAvailableThreads(out var workerThreads, out var iot);
+            ThreadPool.SetMinThreads(Math.Max(ProcessorCount,workerThreads), iot);
+        }
+    }
+
+
     public abstract class MTRunner<T>
     {
-        T[] items;
-        int totalCount;
+        protected T[] items;
+        public virtual int TotalCount { get; set; }
         int current;
-        readonly int totalThreadCount;
         int currentThreadCount;
         Semaphore waiter = new Semaphore(0,1);
         readonly WaitCallback callback;
-        public MTRunner(int threadCount = 2)
+        public MTRunner()
         {
-            totalThreadCount = threadCount;
             callback = DoParallel;
         }
 
@@ -26,10 +36,9 @@ namespace AsyncUpdate
             int i;
             try
             {
-                while ((i = Interlocked.Increment(ref current))< totalCount)
+                while ((i = Interlocked.Increment(ref current))< TotalCount)
                 {
-                    T item = items[i];
-                    Process(in item,i);
+                    Process(i);
                 }
             }
             finally
@@ -41,20 +50,21 @@ namespace AsyncUpdate
             }
         }
 
-        public abstract void Process(in T item,int i);
+        public abstract void Process(int i);
 
         public void DoParallel(T[] items,int start, int count)
         {
-            totalCount = count;
+            TotalCount = count;
             this.items = items;
             current = start - 1;
-            currentThreadCount = totalThreadCount;
-            for (int i = 0; i < totalThreadCount; i++)
+            currentThreadCount = MTInfo.ProcessorCount;
+            for (int i = 0; i < MTInfo.ProcessorCount; i++)
             {
                 ThreadPool.QueueUserWorkItem(callback);
             }
             
             waiter.WaitOne();
+
             this.items = null;
         }
     }

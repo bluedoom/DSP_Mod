@@ -41,7 +41,9 @@
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CompressionGameSaveHeader.cs" />
     <Compile Include="CompressSave.cs" />
+    <Compile Include="PatchUISaveGame.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -372,6 +374,6 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy $(SolutionDir)LZ4\$(ConfigurationName)\LZ4.dll $(TargetDir)LZ4.dll /y
-copy "$(TargetPath)" "E:\steamgames\steamapps\common\Dyson Sphere Program\BepInEx\scripts\DSP_X1.dll" /Y</PostBuildEvent>
+copy "$(TargetPath)" "E:\steamgames\steamapps\common\Dyson Sphere Program\BepInEx\scripts\CompressSave.dll" /Y</PostBuildEvent>
   </PropertyGroup>
 </Project>

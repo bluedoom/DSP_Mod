@@ -14,15 +14,20 @@ namespace DSP_Plugin
 	public class CompressSave : BaseUnityPlugin
 	{
 		Harmony patchInstance;
+        Harmony uiPatchInstance;
 		private void Start()
 		{
  			patchInstance = Harmony.CreateAndPatchAll(typeof(PatchSave), null);
-			Logger.LogWarning("GameSave Start");
+            uiPatchInstance = Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null);
+
+            Logger.LogWarning("GameSave Start");
 		}
 
 		void OnDestroy()
         {
+            PatchUISaveGame.OnDestroy();
 			patchInstance?.UnpatchSelf();
+            uiPatchInstance?.UnpatchSelf();
         }
 	}
 
@@ -33,6 +38,7 @@ namespace DSP_Plugin
         const bool RunHostFunc = true;
 		const long MB = 1024 * 1024;
 		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB);
+        public static bool UseCompressSave = false;
 
         public static string UnzipToFile(LZ4DecompressionStream lzStream,string fullPath)
         {
@@ -40,7 +46,7 @@ namespace DSP_Plugin
             string dir = Path.GetDirectoryName(fullPath);
             string filename = "[Recovery]-" + Path.GetFileNameWithoutExtension(fullPath);
             fullPath = Path.Combine(dir, filename+ GameSave.saveExt);
-            var buffer = new byte[64 * 1024];
+            var buffer = new byte[1024 * 1024];
             using (var fs = new FileStream(fullPath, FileMode.Create))
             using (var br = new BinaryWriter(fs))
             {
@@ -55,7 +61,7 @@ namespace DSP_Plugin
             return filename;
         }
 
-		static readonly Version VerifiedVersion = new Version {
+		public static readonly Version VerifiedVersion = new Version {
 			Major = 0,
 			Minor = 6,
 			Release = 17,
@@ -92,10 +98,12 @@ namespace DSP_Plugin
                 Debug.LogWarning($"VersionVerify Failed. Expect:{VerifiedVersion},Current:{GameConfig.gameVersion}");
                 return RunHostFunc;
             }
+            if (!UseCompressSave) return RunHostFunc;
+
 			__result = Save(saveName);
 			return !__result;
         }
-		static bool Save(string saveName)
+		public static bool Save(string saveName)
 		{
 			HighStopwatch highStopwatch = new HighStopwatch();
 			highStopwatch.Begin();
@@ -205,10 +213,17 @@ namespace DSP_Plugin
             GameSaveHeader result;
             try
             {
-                GameSaveHeader gameSaveHeader = new GameSaveHeader();
+                CompressionGameSaveHeader gameSaveHeader = new CompressionGameSaveHeader();
                 using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
                 {
-                    if (!IsCompressedSave(fileStream)) return null;
+                    if (!IsCompressedSave(fileStream))
+                    {
+                        return null; 
+                    }
+                    else
+                    {
+                        gameSaveHeader.IsCompressed = true;
+                    }
                     using (var lzstream = new LZ4DecompressionStream(fileStream))
                     using (BinaryReader binaryReader = new BinaryReader(lzstream))
                     {

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using UnityEngine;
 
 namespace AsyncUpdate
 {
@@ -14,14 +15,30 @@ namespace AsyncUpdate
 		Harmony patchInstance;
 		private void Start()
 		{
-			patchInstance = Harmony.CreateAndPatchAll(typeof(PatchTick), null);
+			patchInstance = Harmony.CreateAndPatchAll(typeof(CargeTrafficPatch), null);
 			Logger.LogWarning("GameSave Start");
 		}
 
 		void OnDestroy()
 		{
 			patchInstance?.UnpatchSelf();
+			patchInstance = null;
 		}
+
+		public void Update()
+        {
+			if (Input.GetKeyDown(KeyCode.Home))
+            {
+				if (patchInstance == null)
+                {
+					Start();
+                }
+				else
+                {
+					OnDestroy();
+                }
+            }
+        }
 	}
 
 	class PatchTick
@@ -114,8 +131,10 @@ namespace AsyncUpdate
         class PlanetFactoryRunner : MTRunner<PlanetFactory>
         {
 			public long time;
-            public override void Process(in PlanetFactory item, int i)
+            public override void Process(int i)
             {
+                var item = items[i];
+
 				if (item != null)
 				{
 					item.GameTick(time);
