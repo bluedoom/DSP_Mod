@@ -4,30 +4,32 @@ using BepInEx.Logging;
 using HarmonyLib;
 using LZ4;
 using System;
-
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 namespace DSP_Plugin
 {
-	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.0")]
+	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.0")]
 	public class CompressSave : BaseUnityPlugin
 	{
-		Harmony patchInstance;
-        Harmony uiPatchInstance;
+        List<Harmony> patchList;
 		private void Start()
 		{
- 			patchInstance = Harmony.CreateAndPatchAll(typeof(PatchSave), null);
-            uiPatchInstance = Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null);
-
-            Logger.LogWarning("GameSave Start");
+            patchList = new List<Harmony>
+            {
+                Harmony.CreateAndPatchAll(typeof(PatchSave), null),
+                Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
+                Harmony.CreateAndPatchAll(typeof(PatchUILoadGame), null)
+            };
 		}
 
 		void OnDestroy()
         {
             PatchUISaveGame.OnDestroy();
-			patchInstance?.UnpatchSelf();
-            uiPatchInstance?.UnpatchSelf();
+            PatchUILoadGame.OnDestroy();
+            patchList?.ForEach(h => h.UnpatchSelf());
+            patchList?.Clear();
         }
 	}
 
@@ -89,6 +91,35 @@ namespace DSP_Plugin
             }
             return true;
         }
+
+        public static bool DecompressSave(string saveName)
+        {
+            string path = GameConfig.gameSaveFolder + saveName + GameSave.saveExt;
+            try
+            {
+                using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
+                {
+                    if (!IsCompressedSave(fileStream)) return false;
+                    using (var lzstream = new LZ4DecompressionStream(fileStream))
+                    {
+                        UnzipToFile(lzstream, path);
+                    }
+                }
+                return true;
+            }
+            catch(Exception e)
+            {
+                Debug.LogError(e);
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(GameSave), "AutoSave"),HarmonyPrefix]
+        static void BeforeAutoSave()
+        {
+            UseCompressSave = true;
+        }
+
 		[HarmonyPatch(typeof(GameSave), "SaveCurrentGame"), HarmonyPrefix]
 		static bool Save_Wrap(ref bool __result, string saveName)
         {

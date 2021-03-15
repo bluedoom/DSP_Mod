@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="CompressionGameSaveHeader.cs" />
     <Compile Include="CompressSave.cs" />
+    <Compile Include="PatchUILoadGame.cs" />
     <Compile Include="PatchUISaveGame.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
