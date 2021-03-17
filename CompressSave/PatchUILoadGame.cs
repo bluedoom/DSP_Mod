@@ -16,8 +16,7 @@ namespace DSP_Plugin
         static void OnSelectedChange(UILoadGameWindow __instance, UIButton ___loadButton, Text ___prop3Text)
         {
             _OnOpen(__instance, ___loadButton, ___prop3Text);
-
-            bool compressedSave = ___prop3Text.text.Contains("LZ4") || (___loadButton.button.interactable == false && SaveUtil.IsCompressedSave(__instance.selected.saveName));
+            bool compressedSave = (___prop3Text != null &&___prop3Text.text.Contains("LZ4")) || (___loadButton.button.interactable == false && SaveUtil.IsCompressedSave(__instance.selected?.saveName));
 
             decompressButton.button.interactable = compressedSave;
         }
@@ -49,12 +48,11 @@ namespace DSP_Plugin
                 }
 
                 decompressButton.onClick += _ =>{ 
-                    if(___prop3Text.text.Contains("(LZ4)"))
+                    if(SaveUtil.DecompressSave(__instance.selected.saveName, out var newfileName))
                     {
-                        if(SaveUtil.DecompressSave(__instance.selected.saveName))
-                        {
-                            __instance.RefreshList();
-                        }
+                        __instance.RefreshList();
+                        var entries =  AccessTools.Field(__instance.GetType(), "entries").GetValue(__instance) as List<UIGameSaveEntry>;
+                        __instance.selected = entries.First(e => e.saveName == newfileName);
                     }
                 };
             }

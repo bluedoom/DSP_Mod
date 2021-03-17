@@ -44,11 +44,12 @@ namespace DSP_Plugin
                 br.Write(fs.Length);
 
             }
-            return filename;
+            return Path.GetFileNameWithoutExtension(fullPath);
         }
 
-        public static bool DecompressSave(string saveName)
+        public static bool DecompressSave(string saveName, out string newSaveName)
         {
+            newSaveName = string.Empty;
             string path = GameConfig.gameSaveFolder + saveName + GameSave.saveExt;
             try
             {
@@ -57,7 +58,7 @@ namespace DSP_Plugin
                     if (!IsCompressedSave(fileStream)) return false;
                     using (var lzstream = new LZ4DecompressionStream(fileStream))
                     {
-                        UnzipToFile(lzstream, path);
+                        newSaveName = UnzipToFile(lzstream, path);
                     }
                 }
                 return true;
@@ -80,6 +81,7 @@ namespace DSP_Plugin
 
         internal static bool IsCompressedSave(string saveName)
         {
+            if (string.IsNullOrEmpty(saveName)) return false;
             try
             {
                 using (FileStream fileStream = new FileStream(GetFullSavePath(saveName), FileMode.Open))

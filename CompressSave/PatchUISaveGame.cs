@@ -18,7 +18,6 @@ namespace DSP_Plugin
             //Console.WriteLine("OnCreate");
             context = new UIContext();
         }
-
         //[HarmonyPatch(typeof(UISaveGameWindow), "_OnRegEvent"), HarmonyPostfix]
         //static void _OnRegEvent()
         //{
