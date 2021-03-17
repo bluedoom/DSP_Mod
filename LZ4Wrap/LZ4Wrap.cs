@@ -22,7 +22,7 @@ namespace LZ4
             string root = string.Empty;
             try
             {
-                if (string.IsNullOrEmpty(assemblyPath))
+                if (!string.IsNullOrEmpty(assemblyPath))
                 {
                     root = Path.GetDirectoryName(assemblyPath);
                 }

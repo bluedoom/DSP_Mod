@@ -10,4 +10,11 @@ move CompressSave.zip ..\..\CompressSave.zip
 move CompressSavePack.zip ..\..\CompressSavePack.zip
 popd
 
-@REM "E:\Tools\7z\7za.exe" a UnzipSave.zip ./UnzipSave.exe ./x64 ./MonoMod.Utils.dll
+mkdir "UnzipSave\Release\x64"
+move "%cd%\UnzipSave\Release\LZ4.dll" "%cd%\UnzipSave\Release\x64\LZ4.dll" 
+echo F| xcopy "LZ4\static\LICENSE" "UnzipSave\Release\x64\LICENSE" /y
+
+pushd "UnzipSave\Release"
+"E:\Tools\7z\7za.exe" a UnzipSave.zip ./UnzipSave.exe ./x64 ./MonoMod.Utils.dll
+move UnzipSave.zip ..\..\UnzipSave.zip
+popd
