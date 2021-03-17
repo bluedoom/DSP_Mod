@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,12 +11,15 @@ namespace DSP_Plugin
     class PatchUILoadGame
     {
         public static UIButton decompressButton;
-        
+
         [HarmonyPatch(typeof(UILoadGameWindow), "OnSelectedChange"), HarmonyPostfix]
         static void OnSelectedChange(UILoadGameWindow __instance, UIButton ___loadButton, Text ___prop3Text)
         {
             _OnOpen(__instance, ___loadButton, ___prop3Text);
-            decompressButton.button.interactable = ___prop3Text.text.Contains("(LZ4)");
+
+            bool compressedSave = ___prop3Text.text.Contains("LZ4") || (___loadButton.button.interactable == false && SaveUtil.IsCompressedSave(__instance.selected.saveName));
+
+            decompressButton.button.interactable = compressedSave;
         }
 
         [HarmonyPatch(typeof(UILoadGameWindow), "_OnOpen"), HarmonyPostfix]
@@ -48,7 +51,7 @@ namespace DSP_Plugin
                 decompressButton.onClick += _ =>{ 
                     if(___prop3Text.text.Contains("(LZ4)"))
                     {
-                        if(PatchSave.DecompressSave(__instance.selected.saveName))
+                        if(SaveUtil.DecompressSave(__instance.selected.saveName))
                         {
                             __instance.RefreshList();
                         }

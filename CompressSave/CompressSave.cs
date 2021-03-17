@@ -14,66 +14,49 @@ namespace DSP_Plugin
 	public class CompressSave : BaseUnityPlugin
 	{
         List<Harmony> patchList;
-		private void Start()
-		{
-            patchList = new List<Harmony>
+        Harmony patchUILoadGameInstance;
+
+        private void Start()
+        {
+            //SaveUtil.logger = Logger;
+            BepInEx.Logging.Logger.Sources.Add(SaveUtil.logger);
+
+            if (GameConfig.gameVersion == SaveUtil.VerifiedVersion)
+            {       
+                patchList = new List<Harmony>
+                {
+                    Harmony.CreateAndPatchAll(typeof(PatchSave), null),
+                    Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
+                };
+            }
+            else
             {
-                Harmony.CreateAndPatchAll(typeof(PatchSave), null),
-                Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
-                Harmony.CreateAndPatchAll(typeof(PatchUILoadGame), null)
-            };
-		}
+                SaveUtil.logger.LogWarning($"Version Verify Failed. Expect:{SaveUtil.VerifiedVersion},Current:{GameConfig.gameVersion}");
+            }
+            patchUILoadGameInstance = Harmony.CreateAndPatchAll(typeof(PatchUILoadGame), null);
+
+        }
 
 		void OnDestroy()
         {
+            BepInEx.Logging.Logger.Sources.Remove(SaveUtil.logger);
             PatchUISaveGame.OnDestroy();
             PatchUILoadGame.OnDestroy();
-            patchList?.ForEach(h => h.UnpatchSelf());
+            patchUILoadGameInstance?.UnpatchSelf();
+            patchList?.ForEach(h => h?.UnpatchSelf());
             patchList?.Clear();
         }
 	}
 
 	class PatchSave
 	{
-        static ManualLogSource logger = BepInEx.Logging.Logger.CreateLogSource("SaveCompress");
         const bool SkipHostFunc = false;
         const bool RunHostFunc = true;
 		const long MB = 1024 * 1024;
 		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB);
         public static bool UseCompressSave = false;
 
-        public static string UnzipToFile(LZ4DecompressionStream lzStream,string fullPath)
-        {
-            lzStream.ResetStream();
-            string dir = Path.GetDirectoryName(fullPath);
-            string filename = "[Recovery]-" + Path.GetFileNameWithoutExtension(fullPath);
-            fullPath = Path.Combine(dir, filename+ GameSave.saveExt);
-            var buffer = new byte[1024 * 1024];
-            using (var fs = new FileStream(fullPath, FileMode.Create))
-            using (var br = new BinaryWriter(fs))
-            {
-                for (int read = lzStream.Read(buffer, 0, buffer.Length); read > 0; read = lzStream.Read(buffer, 0, buffer.Length))
-                {
-                    fs.Write(buffer, 0, read);
-                }
-                fs.Seek(6L, SeekOrigin.Begin);
-                br.Write(fs.Length);
-                
-            }
-            return filename;
-        }
 
-		public static readonly Version VerifiedVersion = new Version {
-			Major = 0,
-			Minor = 6,
-			Release = 17,
-			Build = 5831,
-		};
-
-		static bool VerifyVersion(int majorVersion,int minorVersion,int releaseVersion)
-        {
-			return new Version(majorVersion, minorVersion, releaseVersion) == VerifiedVersion;
-		}
 
 
         private static void WriteHeader(FileStream fileStream)
@@ -82,37 +65,6 @@ namespace DSP_Plugin
                 fileStream.WriteByte(0xCC);
         }
 
-        static bool IsCompressedSave(FileStream fs)
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                if (0xCC != fs.ReadByte())
-                    return false;
-            }
-            return true;
-        }
-
-        public static bool DecompressSave(string saveName)
-        {
-            string path = GameConfig.gameSaveFolder + saveName + GameSave.saveExt;
-            try
-            {
-                using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
-                {
-                    if (!IsCompressedSave(fileStream)) return false;
-                    using (var lzstream = new LZ4DecompressionStream(fileStream))
-                    {
-                        UnzipToFile(lzstream, path);
-                    }
-                }
-                return true;
-            }
-            catch(Exception e)
-            {
-                Debug.LogError(e);
-                return false;
-            }
-        }
 
         [HarmonyPatch(typeof(GameSave), "AutoSave"),HarmonyPrefix]
         static void BeforeAutoSave()
@@ -123,10 +75,9 @@ namespace DSP_Plugin
 		[HarmonyPatch(typeof(GameSave), "SaveCurrentGame"), HarmonyPrefix]
 		static bool Save_Wrap(ref bool __result, string saveName)
         {
-            if (VerifiedVersion != GameConfig.gameVersion)
+            if (SaveUtil.VerifiedVersion != GameConfig.gameVersion)
             {
                 //logger.LogWarning($"VersionVerify Failed. Expect:{VerifiedVersion},Current:{GameConfig.gameVersion}");
-                Debug.LogWarning($"VersionVerify Failed. Expect:{VerifiedVersion},Current:{GameConfig.gameVersion}");
                 return RunHostFunc;
             }
             if (!UseCompressSave) return RunHostFunc;
@@ -154,7 +105,7 @@ namespace DSP_Plugin
                     WriteHeader(fileStream);
 
                     using (LZ4CompressionStream lzstream = new LZ4CompressionStream(fileStream, compressBuffer, true))
-                    using (BinaryWriter binaryWriter = lzstream.CreateBufferWriter())
+                    using (BinaryWriter binaryWriter = lzstream.CreateBufferedWriter())
 					{
 						binaryWriter.Write('V');
 						binaryWriter.Write('F');
@@ -247,13 +198,13 @@ namespace DSP_Plugin
                 CompressionGameSaveHeader gameSaveHeader = new CompressionGameSaveHeader();
                 using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
                 {
-                    if (!IsCompressedSave(fileStream))
+                    if (SaveUtil.IsCompressedSave(fileStream))
                     {
-                        return null; 
+                        gameSaveHeader.IsCompressed = true;
                     }
                     else
                     {
-                        gameSaveHeader.IsCompressed = true;
+                        return null; 
                     }
                     using (var lzstream = new LZ4DecompressionStream(fileStream))
                     using (BinaryReader binaryReader = new BinaryReader(lzstream))
@@ -305,7 +256,7 @@ namespace DSP_Plugin
         }
 
         [HarmonyPatch(typeof(GameSave), "LoadCurrentGame"), HarmonyPrefix]
-        static bool Load_Wrap(ref bool __result, ref string saveName)
+        static bool Load_Wrap(ref bool __result, string saveName)
         {
             __result = LoadCurrentGame(ref saveName);
             return !__result;
@@ -330,7 +281,7 @@ namespace DSP_Plugin
             {
                 using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
                 {
-                    if (!IsCompressedSave(fileStream)) return false;
+                    if (!SaveUtil.IsCompressedSave(fileStream)) return false;
                     using (var lzstream = new LZ4DecompressionStream(fileStream))
                     using (BinaryReader binaryReader = new BinaryReader(lzstream))
                     {
@@ -352,13 +303,9 @@ namespace DSP_Plugin
                             Debug.LogError("Game save is too old");
                             return false;
                         }
-                        if (!VerifyVersion(binaryReader.ReadInt32(),
-                            binaryReader.ReadInt32(),
-                            binaryReader.ReadInt32()))
-                        {
-                            saveName = UnzipToFile(lzstream, path);
-                            return false;
-                        }
+                        binaryReader.ReadInt32();
+                        binaryReader.ReadInt32();
+                        binaryReader.ReadInt32();
 
 
                         binaryReader.ReadInt64();
@@ -388,6 +335,7 @@ namespace DSP_Plugin
             }
             return result;
         }
+
     }
 
 }

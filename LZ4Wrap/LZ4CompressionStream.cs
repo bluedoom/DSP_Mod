@@ -79,7 +79,7 @@ namespace LZ4
         //        }
         //    }
         //}
-        public BufferWriter CreateBufferWriter()
+        public BufferWriter CreateBufferedWriter()
         => new BufferWriter(SwapBuffer, doubleBuffer.writeBuffer);
 
 
