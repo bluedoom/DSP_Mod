@@ -16,6 +16,7 @@ namespace LZ4
 
     public static class LZ4API
     {
+        public static readonly bool Avaliable;
         static LZ4API()
         {
             string assemblyPath = System.Reflection.Assembly.GetAssembly(typeof(LZ4API)).Location;
@@ -26,22 +27,24 @@ namespace LZ4
                 {
                     root = Path.GetDirectoryName(assemblyPath);
                 }
-            }catch
-            {
-
+                var map = new Dictionary<string, List<DynDllMapping>>
+                {
+                    { "lz4.dll" ,new List<DynDllMapping>{
+                        "LZ4.dll",
+                        "X64/LZ4.dll",
+                        "BepInEx/scripts/x64/LZ4.dll",
+                        Path.Combine(root,"X64/LZ4.dll"),
+                        Path.Combine(root,"LZ4.dll")
+                    } },
+                };
+                typeof(LZ4API).ResolveDynDllImports(map);
             }
-
-            var map = new Dictionary<string, List<DynDllMapping>>
+            catch (Exception e)
             {
-                { "lz4.dll" ,new List<DynDllMapping>{
-                    "LZ4.dll",
-                    "X64/LZ4.dll",
-                    "BepInEx/scripts/x64/LZ4.dll",
-                    Path.Combine(root,"X64/LZ4.dll"),
-                    Path.Combine(root,"LZ4.dll")
-                } },
-            };
-            typeof(LZ4API).ResolveDynDllImports(map);
+                Avaliable = false;
+                Console.WriteLine($"Error: {e}");
+            }
+            Avaliable = true;
         }
 
         public delegate long _CalCompressOutBufferSize(long inBufferSize);

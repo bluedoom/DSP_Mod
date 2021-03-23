@@ -58,12 +58,20 @@ namespace LZ4
 
         public static CompressBuffer CreateBuffer(int ExBufferSize = 4 * MB)
         {
-            return new CompressBuffer
+            try
             {
-                outBuffer = new byte[LZ4API.CalCompressOutBufferSize(ExBufferSize) + 1],
-                readBuffer = new byte[ExBufferSize],
-                writeBuffer = new byte[ExBufferSize],
-            };
+                return new CompressBuffer
+                {
+                    outBuffer = new byte[LZ4API.CalCompressOutBufferSize(ExBufferSize) + 1],
+                    readBuffer = new byte[ExBufferSize],
+                    writeBuffer = new byte[ExBufferSize],
+                };
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+            return new CompressBuffer();
         }
 
         //private string _mA;

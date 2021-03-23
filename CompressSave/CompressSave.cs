@@ -19,22 +19,24 @@ namespace DSP_Plugin
         private void Start()
         {
             //SaveUtil.logger = Logger;
-            BepInEx.Logging.Logger.Sources.Add(SaveUtil.logger);
+            if(LZ4API.Avaliable)
+            {
+                BepInEx.Logging.Logger.Sources.Add(SaveUtil.logger);
 
-            if (GameConfig.gameVersion == SaveUtil.VerifiedVersion)
-            {       
-                patchList = new List<Harmony>
+                if (GameConfig.gameVersion == SaveUtil.VerifiedVersion)
+                {
+                    patchList = new List<Harmony>
                 {
                     Harmony.CreateAndPatchAll(typeof(PatchSave), null),
                     Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
                 };
+                }
+                else
+                {
+                    SaveUtil.logger.LogWarning($"Version Verify Failed. Expect:{SaveUtil.VerifiedVersion},Current:{GameConfig.gameVersion}");
+                }
+                patchUILoadGameInstance = Harmony.CreateAndPatchAll(typeof(PatchUILoadGame), null);
             }
-            else
-            {
-                SaveUtil.logger.LogWarning($"Version Verify Failed. Expect:{SaveUtil.VerifiedVersion},Current:{GameConfig.gameVersion}");
-            }
-            patchUILoadGameInstance = Harmony.CreateAndPatchAll(typeof(PatchUILoadGame), null);
-
         }
 
 		void OnDestroy()
@@ -55,9 +57,6 @@ namespace DSP_Plugin
 		const long MB = 1024 * 1024;
 		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB);
         public static bool UseCompressSave = false;
-
-
-
 
         private static void WriteHeader(FileStream fileStream)
         {
