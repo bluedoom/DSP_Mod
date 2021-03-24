@@ -1,5 +1,7 @@
 # 存档压缩 CompressSave
 ## 更新/ Changes
+### 1.1.2 (2021/03/24) (Game Version 0.6.17)
+  * Handle lz4 library missing Error
 ### 1.1.1 (2021/03/17) (Game Version 0.6.17)
   * Fix Load Error
 ### 1.1.0 (2021/03/17) (Game Version 0.6.17)

@@ -26,10 +26,10 @@ namespace DSP_Plugin
                 if (GameConfig.gameVersion == SaveUtil.VerifiedVersion)
                 {
                     patchList = new List<Harmony>
-                {
-                    Harmony.CreateAndPatchAll(typeof(PatchSave), null),
-                    Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
-                };
+                    {
+                        Harmony.CreateAndPatchAll(typeof(PatchSave), null),
+                        Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
+                    };
                 }
                 else
                 {

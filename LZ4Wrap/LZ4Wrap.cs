@@ -19,6 +19,7 @@ namespace LZ4
         public static readonly bool Avaliable;
         static LZ4API()
         {
+            Avaliable = true;
             string assemblyPath = System.Reflection.Assembly.GetAssembly(typeof(LZ4API)).Location;
             string root = string.Empty;
             try
@@ -43,8 +44,8 @@ namespace LZ4
             {
                 Avaliable = false;
                 Console.WriteLine($"Error: {e}");
+                return;
             }
-            Avaliable = true;
         }
 
         public delegate long _CalCompressOutBufferSize(long inBufferSize);
