@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace DSP_Plugin
 {
-	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.0")]
+	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.3")]
 	public class CompressSave : BaseUnityPlugin
 	{
         List<Harmony> patchList;
@@ -86,7 +86,8 @@ namespace DSP_Plugin
         }
 		public static bool Save(string saveName)
 		{
-			HighStopwatch highStopwatch = new HighStopwatch();
+            PARTNER.UploadClusterGenerationToGalaxyServer(GameMain.data);
+            HighStopwatch highStopwatch = new HighStopwatch();
 			highStopwatch.Begin();
 			if (DSPGame.Game == null)
 			{
@@ -106,48 +107,48 @@ namespace DSP_Plugin
                     using (LZ4CompressionStream lzstream = new LZ4CompressionStream(fileStream, compressBuffer, true))
                     using (BinaryWriter binaryWriter = lzstream.CreateBufferedWriter())
 					{
-						binaryWriter.Write('V');
-						binaryWriter.Write('F');
-						binaryWriter.Write('S');
-						binaryWriter.Write('A');
-						binaryWriter.Write('V');
-						binaryWriter.Write('E');
-						binaryWriter.Write(0L);
-						binaryWriter.Write(5);
-						binaryWriter.Write(GameConfig.gameVersion.Major);
-						binaryWriter.Write(GameConfig.gameVersion.Minor);
-						binaryWriter.Write(GameConfig.gameVersion.Release);
-						binaryWriter.Write(GameMain.gameTick);
-						long ticks = DateTime.Now.Ticks;
-						binaryWriter.Write(ticks);
-						GameData data = GameMain.data;
-						if (data.screenShot != null)
-						{
-							int num = data.screenShot.Length;
-							binaryWriter.Write(num);
-							binaryWriter.Write(data.screenShot, 0, num);
-						}
-						else
-						{
-							binaryWriter.Write(0);
-						}
-						ulong num2 = 0UL;
-						DysonSphere[] dysonSpheres = data.dysonSpheres;
-						int num3 = dysonSpheres.Length;
-						for (int i = 0; i < num3; i++)
-						{
-							if (dysonSpheres[i] != null)
-							{
+                        binaryWriter.Write('V');
+                        binaryWriter.Write('F');
+                        binaryWriter.Write('S');
+                        binaryWriter.Write('A');
+                        binaryWriter.Write('V');
+                        binaryWriter.Write('E');
+                        binaryWriter.Write(0L);
+                        binaryWriter.Write(5);
+                        binaryWriter.Write(GameConfig.gameVersion.Major);
+                        binaryWriter.Write(GameConfig.gameVersion.Minor);
+                        binaryWriter.Write(GameConfig.gameVersion.Release);
+                        binaryWriter.Write(GameMain.gameTick);
+                        long ticks = DateTime.Now.Ticks;
+                        binaryWriter.Write(ticks);
+                        GameData data = GameMain.data;
+                        if (data.screenShot != null)
+                        {
+                            int num = data.screenShot.Length;
+                            binaryWriter.Write(num);
+                            binaryWriter.Write(data.screenShot, 0, num);
+                        }
+                        else
+                        {
+                            binaryWriter.Write(0);
+                        }
+                        ulong num2 = 0uL;
+                        DysonSphere[] dysonSpheres = data.dysonSpheres;
+                        int num3 = dysonSpheres.Length;
+                        for (int i = 0; i < num3; i++)
+                        {
+                            if (dysonSpheres[i] != null)
+                            {
 								num2 += (ulong)dysonSpheres[i].energyGenCurrentTick;
-							}
-						}
-						data.account.Export(binaryWriter);
-						binaryWriter.Write(num2);
-						data.Export(binaryWriter);
-						//long position = fileStream.Position;
-						//fileStream.Seek(6L, SeekOrigin.Begin);
-						//binaryWriter.Write(position);
-					}
+                            }
+                        }
+                        data.account.Export(binaryWriter);
+                        binaryWriter.Write(num2);
+                        data.Export(binaryWriter);
+                        //long position = fileStream.Position;
+                        //fileStream.Seek(6L, SeekOrigin.Begin);
+                        //binaryWriter.Write(position);
+                    }
 				}
 				double duration = highStopwatch.duration;
 				Debug.Log("Game save file wrote, time cost: " + duration + "s");

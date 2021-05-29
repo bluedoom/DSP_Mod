@@ -16,9 +16,8 @@ namespace DSP_Plugin
         public static readonly Version VerifiedVersion = new Version
         {
             Major = 0,
-            Minor = 6,
-            Release = 17,
-            Build = 5831,
+            Minor = 7,
+            Release = 18,
         };
 
         public static string UnzipToFile(LZ4DecompressionStream lzStream, string fullPath)

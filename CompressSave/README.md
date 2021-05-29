@@ -1,5 +1,8 @@
 # 存档压缩 CompressSave
 ## 更新/ Changes
+### 1.1.3 (2021/05/29) (Game Version 0.7.18)
+  * 适配新版本 / Adapt new game release.
+  * 修复内存泄漏问题 / Fixed memory leak.
 ### 1.1.2 (2021/03/24) (Game Version 0.6.17)
   * Handle lz4 library missing Error
 ### 1.1.1 (2021/03/17) (Game Version 0.6.17)
@@ -7,9 +10,6 @@
 ### 1.1.0 (2021/03/17) (Game Version 0.6.17)
   * 增加UI按钮 / Add UI button
 
-
-## 警告
-使用Mod可能会损坏您的存档，请注意备份存档！
 ## 简介
   减少30%存档大小|减少75%保存时间 
   | 压缩前 | 压缩后 |
@@ -36,8 +36,7 @@
 [UnzipSave.exe]: https://github.com/bluedoom/DSP_Mod/releases
 
 # Archive compression CompressSave
-## Warning
-Using Mod may damage your archive, please pay attention to backup archive!
+
 ## Introduction
   Reduce archive size by 30% | Reduce save time by 75%
   | Before | After |
@@ -56,7 +55,7 @@ Using Mod may damage your archive, please pay attention to backup archive!
   While the plug-in being installed successfully, all save actions will be replaced with compressed vserion,except manual saving. (original saving button).
   The loading interface will provide a decompression button (green button).
 ## Version Mismatch
-1. The loading interface cannot load the compressed archive normally, but the decompression function can be used. At this time, you need to manually decompress the archive and load it, which name is "[Recovery]-Archive name[n].dsv".
+The loading interface cannot load the compressed archive normally, but the decompression function can be used. At this time, you need to manually decompress the archive and load it, which name is "[Recovery]-Archive name[n].dsv".
 
 ## External Tools (Alternative)
 

@@ -68,6 +68,13 @@ namespace LZ4
             
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            LZ4API.DecompressEnd(dctx);
+            dctx = IntPtr.Zero;
+            base.Dispose(disposing);
+        }
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             int readlen = 0;
