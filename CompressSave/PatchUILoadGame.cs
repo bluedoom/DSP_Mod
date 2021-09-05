@@ -38,13 +38,13 @@ namespace DSP_Plugin
 
                 if (localizer)
                 {
-                    localizer.stringKey = "解压/Decompress";
-                    localizer.translation = "解压/Decompress";
+                    localizer.stringKey = "解压/Decompress".Translate();
+                    localizer.translation = "解压/Decompress".Translate();
                 }
 
                 if (text)
                 {
-                    text.text = "解压/Decompress";
+                    text.text = "解压/Decompress".Translate();
                 }
 
                 decompressButton.onClick += _ =>{ 

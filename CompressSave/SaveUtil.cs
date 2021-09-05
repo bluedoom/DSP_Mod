@@ -10,14 +10,14 @@ namespace DSP_Plugin
 {
     class SaveUtil
     {
-        public static ManualLogSource logger = BepInEx.Logging.Logger.CreateLogSource("SaveCompress");
+        public static ManualLogSource logger;
         
 
         public static readonly Version VerifiedVersion = new Version
         {
             Major = 0,
-            Minor = 7,
-            Release = 18,
+            Minor = 8,
+            Release = 20,
         };
 
         public static string UnzipToFile(LZ4DecompressionStream lzStream, string fullPath)
