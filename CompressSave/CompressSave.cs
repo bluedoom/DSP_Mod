@@ -45,8 +45,9 @@ namespace DSP_Plugin
 	class PatchSave
 	{
 		const long MB = 1024 * 1024;
-		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB*2); //Bigger buffer for GS2 compatible
+		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB); //Bigger buffer for GS2 compatible
         public static bool UseCompressSave = false;
+        public static bool IsCompressedSave;
         static Stream lzstream = null;
         public static bool EnableCompress;
         public static bool EnableDecompress;
@@ -60,13 +61,13 @@ namespace DSP_Plugin
         [HarmonyPrefix]
         [HarmonyPatch(typeof(GameSave), "AutoSave")]
         [HarmonyPatch(typeof(GameSave), "SaveAsLastExit")]
-        public static void BeforeAutoSave()
+        static void BeforeAutoSave()
         {
             UseCompressSave = EnableCompress;
         }
 
         [HarmonyPatch(typeof(GameSave), "SaveCurrentGame"), HarmonyTranspiler]
-        public static IEnumerable<CodeInstruction> SaveCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
+        static IEnumerable<CodeInstruction> SaveCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
         {
             /* BinaryWriter binaryWriter = new BinaryWriter(fileStream); => Create lzstream and replace binaryWriter.
              * fileStream.Seek(6L, SeekOrigin.Begin); binaryWriter.Write(position); => Disable seek&write function.
@@ -99,12 +100,12 @@ namespace DSP_Plugin
         {
             if (UseCompressSave)
             {
-                SaveUtil.logger.LogDebug("Using compress save...");
+                SaveUtil.logger.LogDebug("Begin compress save");
                 WriteHeader(fileStream);
                 lzstream = new LZ4CompressionStream(fileStream, compressBuffer, true); //need to dispose after use
                 return ((LZ4CompressionStream)lzstream).CreateBufferedWriter();
             }
-            SaveUtil.logger.LogDebug("Using normal save...");
+            SaveUtil.logger.LogDebug("Begin normal save");
             return new BinaryWriter(fileStream);
         }
 
@@ -139,7 +140,7 @@ namespace DSP_Plugin
         [HarmonyPatch(typeof(GameSave), "LoadCurrentGame")]
         [HarmonyPatch(typeof(GameSave), "LoadGameDesc")]
         [HarmonyPatch(typeof(GameSave), "ReadHeader")]
-        public static IEnumerable<CodeInstruction> LoadCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
+        static IEnumerable<CodeInstruction> LoadCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
         {
             /* using (BinaryReader binaryReader = new BinaryReader(fileStream)) => Create lzstream and replace binaryReader.
              * if (fileStream.Length != binaryReader.ReadInt64()) => Replace binaryReader.ReadInt64() to pass file length check.
@@ -158,9 +159,12 @@ namespace DSP_Plugin
                     .Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "DisposeLzstream")))
                     .MatchBack(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IO.Stream), "Seek")));
                 if (matcher.IsValid)
-                {
                     matcher.Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "ReadSeek"));
-                }
+                matcher.Start()
+                    .MatchForward(false, new CodeMatch(OpCodes.Newobj, AccessTools.Constructor(typeof(GameSaveHeader))));
+                if (matcher.IsValid)
+                    matcher.Set(OpCodes.Newobj, AccessTools.Constructor(typeof(CompressionGameSaveHeader))); //ReadHeader
+
                 EnableDecompress = true;
                 return matcher.InstructionEnumeration();
             }
@@ -173,23 +177,16 @@ namespace DSP_Plugin
         }
 
         [HarmonyPatch(typeof(GameSave), "ReadHeader"), HarmonyPostfix]
-        public static GameSaveHeader ReadHeader_Postfix(GameSaveHeader __result)
+        static GameSaveHeader ReadHeader_Postfix(GameSaveHeader __result)
         {
-            if (UseCompressSave)
-            {
-                UseCompressSave = false;
-                var header = new CompressionGameSaveHeader(__result)
-                {
-                    IsCompressed = true
-                };
-                return header; //CompressionGameSaveHeader for UILoadGame to recognize
-            }
+            if (__result != null)
+                ((CompressionGameSaveHeader)__result).IsCompressed = IsCompressedSave;
             return __result;
         }
 
         public static BinaryReader CreateBinaryReader(FileStream fileStream)
         {
-            if (SaveUtil.IsCompressedSave(fileStream))
+            if ((IsCompressedSave = SaveUtil.IsCompressedSave(fileStream)))
             {
                 UseCompressSave = true;
                 lzstream = new LZ4DecompressionStream(fileStream);

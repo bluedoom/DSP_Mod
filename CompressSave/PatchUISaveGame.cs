@@ -41,45 +41,8 @@ namespace DSP_Plugin
             return;
         }
 
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(UISaveGameWindow), "OnSelectedChange")]
-        [HarmonyPatch(typeof(UILoadGameWindow), "OnSelectedChange")]
-        static IEnumerable<CodeInstruction> MyTranspiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
-        {
-            var ReadHeader = typeof(GameSave).GetMethod("ReadHeader", BindingFlags.Static|BindingFlags.Public);
-            if (ReadHeader == null) return instructions;
-            var codes = new List<CodeInstruction>(instructions);
-            for (int i = 0; i < codes.Count; i++)
-            {
-                var code = codes[i];
-                if (code.opcode == OpCodes.Ldstr && code.OperandIs("#,##0"))
-                {
-                    var iffalse = generator.DefineLabel();
-                    var callLabel = generator.DefineLabel();
-                    code.WithLabels(iffalse)
-                        .operand = "(N)#,##0";
-                    codes[i + 1].WithLabels(callLabel);
-                    var IL = new List<CodeInstruction> {
-                        new CodeInstruction(OpCodes.Ldloc_0),
-                        new CodeInstruction(OpCodes.Isinst,typeof(CompressionGameSaveHeader)),
-                        new CodeInstruction(OpCodes.Brfalse_S,iffalse),
-                        new CodeInstruction(OpCodes.Ldstr,"(LZ4)#,##0"),
-                        new CodeInstruction(OpCodes.Br_S,callLabel),
-                    };
-                    codes.InsertRange(i, IL);
-                    //for(int j = i -1; j< i+IL.Count + 2;j++)
-                    //{
-                    //    Console.WriteLine(codes[j]);
-                    //}
-                    break;
-                }
-            }
-
-            return codes.AsEnumerable();
-        }
-
         [HarmonyPatch(typeof(UISaveGameWindow), "OnSaveClick"), HarmonyReversePatch]
-        public static void OSaveGameAs(this UISaveGameWindow ui, int data) { }
+        static void OSaveGameAs(this UISaveGameWindow ui, int data) { }
 
         [HarmonyPatch(typeof(UISaveGameWindow), "CheckAndSetSaveButtonEnable"), HarmonyPostfix]
         static void CheckAndSetSaveButtonEnable(UISaveGameWindow __instance, UIButton ___saveButton, Text ___saveButtonText)
@@ -124,7 +87,7 @@ namespace DSP_Plugin
                 context.buttonCompress = (__instance.transform.Find("button-compress")?.gameObject??GameObject.Instantiate(___saveButton.gameObject, ___saveButton.transform.parent)).GetComponent<UIButton>();
                 
                 context.buttonCompress.gameObject.name = "button-compress";
-                context.buttonCompress.transform.Translate(new Vector3(-1.5f, 0, 0));
+                context.buttonCompress.transform.Translate(new Vector3(-2.0f, 0, 0));
                 context.buttonCompress.button.image.color = new Color32(0xfc,0x6f,00,0x77);
                 context.buttonCompressText = context.buttonCompress.transform.Find("button-text")?.GetComponent<Text>();
 

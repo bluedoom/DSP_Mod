@@ -259,51 +259,36 @@ namespace LZ4
 			}
 			int byteCount = _encoding.GetByteCount(value);
 			Write7BitEncodedInt(byteCount);
-			//if (_largeByteBuffer == null)
-			//{
-			//	_largeByteBuffer = new byte[256];
-			//	_maxChars = _largeByteBuffer.Length / _encoding.GetMaxByteCount(1);
-			//}
 			if (byteCount <= suplusCapacity)
 			{
 				int Wcount = _encoding.GetBytes(value, 0, value.Length, buffer, position);
 				suplusCapacity -= Wcount;
 				position += Wcount;
-				//OutStream.Write(_largeByteBuffer, 0, byteCount);
+				//Console.WriteLine($"Using quick write!");
 				return;
 			}
-			int totalLoaded = 0;
-			int count = value.Length;
-			int maxByteCount = _encoding.GetMaxByteCount(1);
-			while (true)
+
+			int charIndex = 0;
+			bool completed;
+			do
 			{
-				if (count > 0)
+				fixed (char* chars = value)
 				{
-					int maxChar = suplusCapacity / maxByteCount;
-					int loaded = (count > maxChar) ? maxChar : count;
-					if (totalLoaded < 0 || loaded < 0 || checked(totalLoaded + loaded) > value.Length)
+					fixed (byte* bytes = buffer)
 					{
-						break;
+						encoder.Convert(chars + charIndex, value.Length - charIndex,
+							bytes + position, suplusCapacity, false,
+							out int charsConsumed, out int bytesWritten, out completed);
+						charIndex += charsConsumed;						
+						position += bytesWritten;
+						suplusCapacity -= bytesWritten;
+						//Console.WriteLine($"charsConsumed{charsConsumed} charIndex{charIndex} bytesWritten{bytesWritten} position{position} suplusCapacity{suplusCapacity}");
 					}
-					int writed;
-					fixed (char* ptr = value)
-					{
-						fixed (byte* bytes = buffer)
-						{
-							writed = encoder.GetBytes((char*)checked(unchecked((ulong)ptr) + unchecked((ulong)(UIntPtr)(void*)checked(unchecked((long)totalLoaded) * 2L))), loaded, bytes + position, suplusCapacity, loaded == count);
-						}
-					}
-					suplusCapacity -= writed;
-					position += writed;
-					if (suplusCapacity <= 0) SwapBuffer();
-					//OutStream.Write(_largeByteBuffer, 0, bytes2);
-					totalLoaded += loaded;
-					count -= loaded;
-					continue;
 				}
-				return;
-			}
-			throw new ArgumentOutOfRangeException("charCount");
+				if (suplusCapacity <= 0) 
+					SwapBuffer();	
+			} while (!completed);
+			encoder.Reset(); //flush
 		}
 
         protected new void Write7BitEncodedInt(int value)
