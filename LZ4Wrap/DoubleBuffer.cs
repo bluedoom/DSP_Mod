@@ -11,13 +11,14 @@ namespace LZ4
         public byte[] Buffer { get; private set; }
         //public int Start;
         public int Length;
-        public int Capacity { get => Buffer.Length; }
+        public int Capacity;
         public int IdleCapacity => Capacity - Length;
 
-        public int Position { get; set; }
+        public int Position;
         public ByteSpan(byte[] buffer)
         {
             Buffer = buffer;
+            Capacity = Buffer.Length;
         }
         public void Clear()
         {

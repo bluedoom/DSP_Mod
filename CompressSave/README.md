@@ -1,5 +1,16 @@
 # 存档压缩 CompressSave
 ## 更新/ Changes
+### 1.1.5 (Game Version 0.8.21)
+  * 适配新版本 / Adapt new game release.
+  * Thanks [@starfi5h] for
+    - PatchSave now use transpiler for better robustness.
+    - Change version check to soft warning.
+    - Add PeekableReader so other mods can use BinaryReader.PeekChar().
+    - Change LZ4DecompressionStream.Position behavior. Position setter i  - available now.
+
+[@starfi5h]: https://github.com/starfi5h
+### 1.1.4 (Game Version 0.8.19)
+  * 适配新版本 / Adapt new game release.
 ### 1.1.3 (2021/05/29) (Game Version 0.7.18)
   * 适配新版本 / Adapt new game release.
   * 修复内存泄漏问题 / Fixed memory leak.

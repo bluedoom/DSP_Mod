@@ -60,7 +60,6 @@ namespace LZ4
             {
 				SwapBuffer();
             }
-
 			suplusCapacity -= requiredCapacity;
         }
 
@@ -290,6 +289,8 @@ namespace LZ4
 			} while (!completed);
 			encoder.Reset(); //flush
 		}
+
+
 
         protected new void Write7BitEncodedInt(int value)
         {

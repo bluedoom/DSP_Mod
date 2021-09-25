@@ -70,6 +70,7 @@ namespace DSP_Plugin
         static IEnumerable<CodeInstruction> SaveCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
         {
             /* BinaryWriter binaryWriter = new BinaryWriter(fileStream); => Create lzstream and replace binaryWriter.
+             * move PerformanceMonitor.BeginStream to CreateBinaryWriter.
              * fileStream.Seek(6L, SeekOrigin.Begin); binaryWriter.Write(position); => Disable seek&write function.
              * binaryWriter.Dispose(); => Dispose lzstream before fileStream close.
             */
@@ -78,6 +79,8 @@ namespace DSP_Plugin
                 var matcher = new CodeMatcher(instructions, iLGenerator)
                     .MatchForward(false, new CodeMatch(OpCodes.Newobj, AccessTools.Constructor(typeof(BinaryWriter), new Type[] { typeof(FileStream) })))
                     .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "CreateBinaryWriter"))
+                    //.MatchForward(false, new CodeMatch(OpCodes.Call, AccessTools.Method(typeof(PerformanceMonitor), "BeginStream")))
+                    //.Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "MonitorStream"))
                     .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IO.Stream), "Seek")))
                     .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "FileLengthWrite0"))
                     .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(BinaryWriter), "Write", new Type[] { typeof(long) })))
@@ -94,6 +97,11 @@ namespace DSP_Plugin
                 SaveUtil.logger.LogError(ex);
             }
             return instructions;
+        }
+
+        public static void MonitorStream(Stream fileStream)
+        {
+            PerformanceMonitor.BeginStream(UseCompressSave ? lzstream : fileStream);
         }
 
         public static BinaryWriter CreateBinaryWriter(FileStream fileStream)

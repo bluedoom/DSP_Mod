@@ -17,8 +17,10 @@ namespace LZ4
 
         public override long Length => totalWrite;
 
-        public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        // only use for game statistics
+        public override long Position { get => inputSum; set => inputSum = value; }
 
+        long inputSum = 0;
 
         readonly Stream outStream;
 
@@ -203,6 +205,7 @@ namespace LZ4
                 count -= writeSize;
                 writeSize = writeBuffer.Write(buffer, offset, count);
             }
+            inputSum += count;
         }
 
         protected void FreeContext()
