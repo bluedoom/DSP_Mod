@@ -1,4 +1,3 @@
-
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -6,57 +5,52 @@ using LZ4;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 
 namespace DSP_Plugin
 {
-	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.3")]
+	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.5")]
 	public class CompressSave : BaseUnityPlugin
 	{
-        List<Harmony> patchList;
-        Harmony patchUILoadGameInstance;
-
-        private void Start()
+        Harmony harmony;
+        public void Awake()
         {
-            //SaveUtil.logger = Logger;
-            if(LZ4API.Avaliable)
+            harmony = new Harmony("com.bluedoom.plugin.Dyson.CompressSave");
+            SaveUtil.logger = Logger;
+            if (LZ4API.Avaliable)
             {
-                BepInEx.Logging.Logger.Sources.Add(SaveUtil.logger);
-
-                if (GameConfig.gameVersion == SaveUtil.VerifiedVersion)
-                {
-                    patchList = new List<Harmony>
-                    {
-                        Harmony.CreateAndPatchAll(typeof(PatchSave), null),
-                        Harmony.CreateAndPatchAll(typeof(PatchUISaveGame), null),
-                    };
+                if (GameConfig.gameVersion != SaveUtil.VerifiedVersion)
+                {                    
+                    SaveUtil.logger.LogWarning($"Save versions are not matched. Expect:{SaveUtil.VerifiedVersion},Current:{GameConfig.gameVersion}");
                 }
-                else
-                {
-                    SaveUtil.logger.LogWarning($"Version Verify Failed. Expect:{SaveUtil.VerifiedVersion},Current:{GameConfig.gameVersion}");
-                }
-                patchUILoadGameInstance = Harmony.CreateAndPatchAll(typeof(PatchUILoadGame), null);
+                harmony.PatchAll(typeof(PatchSave));
+                if (PatchSave.EnableCompress)
+                    harmony.PatchAll(typeof(PatchUISaveGame));
+                harmony.PatchAll(typeof(PatchUILoadGame));
             }
+            else
+                SaveUtil.logger.LogWarning("LZ4.dll is not avaliable.");
         }
 
-		void OnDestroy()
+        public void OnDestroy()
         {
-            BepInEx.Logging.Logger.Sources.Remove(SaveUtil.logger);
             PatchUISaveGame.OnDestroy();
             PatchUILoadGame.OnDestroy();
-            patchUILoadGameInstance?.UnpatchSelf();
-            patchList?.ForEach(h => h?.UnpatchSelf());
-            patchList?.Clear();
+            harmony.UnpatchSelf();
         }
 	}
 
 	class PatchSave
 	{
-        const bool SkipHostFunc = false;
-        const bool RunHostFunc = true;
 		const long MB = 1024 * 1024;
-		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB);
+		static LZ4CompressionStream.CompressBuffer compressBuffer = LZ4CompressionStream.CreateBuffer((int)MB); //Bigger buffer for GS2 compatible
         public static bool UseCompressSave = false;
+        public static bool IsCompressedSave;
+        static Stream lzstream = null;
+        public static bool EnableCompress;
+        public static bool EnableDecompress;
 
         private static void WriteHeader(FileStream fileStream)
         {
@@ -64,278 +58,170 @@ namespace DSP_Plugin
                 fileStream.WriteByte(0xCC);
         }
 
-
-        [HarmonyPatch(typeof(GameSave), "AutoSave"),HarmonyPrefix]
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(GameSave), "AutoSave")]
+        [HarmonyPatch(typeof(GameSave), "SaveAsLastExit")]
         static void BeforeAutoSave()
         {
-            UseCompressSave = true;
+            UseCompressSave = EnableCompress;
         }
 
-		[HarmonyPatch(typeof(GameSave), "SaveCurrentGame"), HarmonyPrefix]
-		static bool Save_Wrap(ref bool __result, string saveName)
+        [HarmonyPatch(typeof(GameSave), "SaveCurrentGame"), HarmonyTranspiler]
+        static IEnumerable<CodeInstruction> SaveCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
         {
-            if (SaveUtil.VerifiedVersion != GameConfig.gameVersion)
-            {
-                //logger.LogWarning($"VersionVerify Failed. Expect:{VerifiedVersion},Current:{GameConfig.gameVersion}");
-                return RunHostFunc;
-            }
-            if (!UseCompressSave) return RunHostFunc;
-
-			__result = Save(saveName);
-			return !__result;
-        }
-		public static bool Save(string saveName)
-		{
-            PARTNER.UploadClusterGenerationToGalaxyServer(GameMain.data);
-            HighStopwatch highStopwatch = new HighStopwatch();
-			highStopwatch.Begin();
-			if (DSPGame.Game == null)
-			{
-				Debug.LogError("No game to save");
-				return false;
-
-			}
-			GameCamera.CaptureSaveScreenShot();
-			saveName = saveName.ValidFileName();
-			string path = GameConfig.gameSaveFolder + saveName + GameSave.saveExt;
-			try
-			{
-				using (FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
-				{
-                    WriteHeader(fileStream);
-
-                    using (LZ4CompressionStream lzstream = new LZ4CompressionStream(fileStream, compressBuffer, true))
-                    using (BinaryWriter binaryWriter = lzstream.CreateBufferedWriter())
-					{
-                        binaryWriter.Write('V');
-                        binaryWriter.Write('F');
-                        binaryWriter.Write('S');
-                        binaryWriter.Write('A');
-                        binaryWriter.Write('V');
-                        binaryWriter.Write('E');
-                        binaryWriter.Write(0L);
-                        binaryWriter.Write(5);
-                        binaryWriter.Write(GameConfig.gameVersion.Major);
-                        binaryWriter.Write(GameConfig.gameVersion.Minor);
-                        binaryWriter.Write(GameConfig.gameVersion.Release);
-                        binaryWriter.Write(GameMain.gameTick);
-                        long ticks = DateTime.Now.Ticks;
-                        binaryWriter.Write(ticks);
-                        GameData data = GameMain.data;
-                        if (data.screenShot != null)
-                        {
-                            int num = data.screenShot.Length;
-                            binaryWriter.Write(num);
-                            binaryWriter.Write(data.screenShot, 0, num);
-                        }
-                        else
-                        {
-                            binaryWriter.Write(0);
-                        }
-                        ulong num2 = 0uL;
-                        DysonSphere[] dysonSpheres = data.dysonSpheres;
-                        int num3 = dysonSpheres.Length;
-                        for (int i = 0; i < num3; i++)
-                        {
-                            if (dysonSpheres[i] != null)
-                            {
-								num2 += (ulong)dysonSpheres[i].energyGenCurrentTick;
-                            }
-                        }
-                        data.account.Export(binaryWriter);
-                        binaryWriter.Write(num2);
-                        data.Export(binaryWriter);
-                        //long position = fileStream.Position;
-                        //fileStream.Seek(6L, SeekOrigin.Begin);
-                        //binaryWriter.Write(position);
-                    }
-				}
-				double duration = highStopwatch.duration;
-				Debug.Log("Game save file wrote, time cost: " + duration + "s");
-				STEAMX.UploadScoreToLeaderboard(GameMain.data);
-				return true;
-			}
-			catch (Exception exception)
-			{
-				Debug.LogException(exception);
-				return false;
-			}
-			
-		}
-
-        [HarmonyPatch(typeof(GameSave), "ReadHeader"), HarmonyPrefix]
-        static bool ReadHeader_Wrap(ref GameSaveHeader __result, string saveName, bool readImage)
-        {
-            __result = ReadHeader(saveName, readImage);
-            return __result == null;
-        }
-
-        static bool VerifyHeader(BinaryReader binaryReader)
-        {
-            return binaryReader.ReadChar() == 'V'
-             && binaryReader.ReadChar() == 'F'
-             && binaryReader.ReadChar() == 'S'
-             && binaryReader.ReadChar() == 'A'
-             && binaryReader.ReadChar() == 'V'
-             && binaryReader.ReadChar() == 'E';
-        }
-
-        static GameSaveHeader ReadHeader(string saveName, bool readImage)
-        {
-            if (saveName == null)
-            {
-                return null;
-            }
-            saveName = saveName.ValidFileName();
-            string path = GameConfig.gameSaveFolder + saveName + GameSave.saveExt;
-            if (!File.Exists(path))
-            {
-                return null;
-            }
-            GameSaveHeader result;
+            /* BinaryWriter binaryWriter = new BinaryWriter(fileStream); => Create lzstream and replace binaryWriter.
+             * fileStream.Seek(6L, SeekOrigin.Begin); binaryWriter.Write(position); => Disable seek&write function.
+             * binaryWriter.Dispose(); => Dispose lzstream before fileStream close.
+            */
             try
             {
-                CompressionGameSaveHeader gameSaveHeader = new CompressionGameSaveHeader();
-                using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
-                {
-                    if (SaveUtil.IsCompressedSave(fileStream))
-                    {
-                        gameSaveHeader.IsCompressed = true;
-                    }
-                    else
-                    {
-                        return null; 
-                    }
-                    using (var lzstream = new LZ4DecompressionStream(fileStream))
-                    using (BinaryReader binaryReader = new BinaryReader(lzstream))
-                    {
-                        if (!VerifyHeader(binaryReader))
-                        {
-                            Debug.LogError("Invalid game save file");
-                            return null;
-                        }
-
-                        binaryReader.ReadInt64();
-                        gameSaveHeader.fileSize = fileStream.Length;
-        
-                        gameSaveHeader.headerVersion = binaryReader.ReadInt32();
-                        if (gameSaveHeader.headerVersion < 1)
-                        {
-                            return null;
-                        }
-                        gameSaveHeader.gameClientVersion.Major = binaryReader.ReadInt32();
-                        gameSaveHeader.gameClientVersion.Minor = binaryReader.ReadInt32();
-                        gameSaveHeader.gameClientVersion.Release = binaryReader.ReadInt32();
-                        gameSaveHeader.gameTick = binaryReader.ReadInt64();
-                        long value = binaryReader.ReadInt64();
-                        gameSaveHeader.saveTime = default(DateTime).AddTicks(value);
-                        if (readImage)
-                        {
-                            int count = binaryReader.ReadInt32();
-                            gameSaveHeader.themeImage = binaryReader.ReadBytes(count);
-                        }
-                        if (gameSaveHeader.headerVersion >= 5)
-                        {
-                            gameSaveHeader.accountData.Import(binaryReader);
-                            gameSaveHeader.clusterGeneration = binaryReader.ReadUInt64();
-                        }
-                        else
-                        {
-                            gameSaveHeader.accountData = AccountData.NULL;
-                            gameSaveHeader.clusterGeneration = 0UL;
-                        }
-                    }
-                }
-                result = gameSaveHeader;
+                var matcher = new CodeMatcher(instructions, iLGenerator)
+                    .MatchForward(false, new CodeMatch(OpCodes.Newobj, AccessTools.Constructor(typeof(BinaryWriter), new Type[] { typeof(FileStream) })))
+                    .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "CreateBinaryWriter"))
+                    .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IO.Stream), "Seek")))
+                    .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "FileLengthWrite0"))
+                    .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(BinaryWriter), "Write", new Type[] { typeof(long) })))
+                    .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "FileLengthWrite1"))
+                    .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IDisposable), "Dispose")))
+                    .Advance(1)
+                    .Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "DisposeLzstream")));
+                EnableCompress = true;
+                return matcher.InstructionEnumeration();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                result = null;
+                SaveUtil.logger.LogError("SaveCurrentGame_Transpiler failed. Mod version not compatible with game version.");
+                SaveUtil.logger.LogError(ex);
             }
-            return result;
+            return instructions;
         }
 
-        [HarmonyPatch(typeof(GameSave), "LoadCurrentGame"), HarmonyPrefix]
-        static bool Load_Wrap(ref bool __result, string saveName)
+        public static BinaryWriter CreateBinaryWriter(FileStream fileStream)
         {
-            __result = LoadCurrentGame(ref saveName);
-            return !__result;
+            if (UseCompressSave)
+            {
+                SaveUtil.logger.LogDebug("Begin compress save");
+                WriteHeader(fileStream);
+                lzstream = new LZ4CompressionStream(fileStream, compressBuffer, true); //need to dispose after use
+                return ((LZ4CompressionStream)lzstream).CreateBufferedWriter();
+            }
+            SaveUtil.logger.LogDebug("Begin normal save");
+            return new BinaryWriter(fileStream);
         }
 
-        static bool LoadCurrentGame(ref string saveName)
+        public static long FileLengthWrite0(FileStream fileStream, long offset, SeekOrigin origin)
         {
-            if (DSPGame.Game == null)
+            if (!UseCompressSave)
+                return fileStream.Seek(offset, origin);
+            return 0L;
+        }
+
+        public static void FileLengthWrite1(BinaryWriter binaryWriter, long value)
+        {
+            if (!UseCompressSave)
+                binaryWriter.Write(value);
+        }
+
+        public static void DisposeLzstream()
+        {
+            if (UseCompressSave)
             {
-                Debug.LogError("No game to load");
-                return false;
+                bool writeflag = lzstream.CanWrite;
+                lzstream?.Dispose(); //Dispose need to be done before fstream closed.
+                lzstream = null;
+                if (writeflag) //Reset UseCompressSave after writing to file
+                    UseCompressSave = false;                
+                return;
             }
-            saveName = saveName.ValidFileName();
-            string path = GameConfig.gameSaveFolder + saveName + GameSave.saveExt;
-            if (!File.Exists(path))
-            {
-                Debug.LogError("Game save not exist");
-                return false;
-            }
-            bool result;
+        }
+
+
+        [HarmonyTranspiler]
+        [HarmonyPatch(typeof(GameSave), "LoadCurrentGame")]
+        [HarmonyPatch(typeof(GameSave), "LoadGameDesc")]
+        [HarmonyPatch(typeof(GameSave), "ReadHeader")]
+        static IEnumerable<CodeInstruction> LoadCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
+        {
+            /* using (BinaryReader binaryReader = new BinaryReader(fileStream)) => Create lzstream and replace binaryReader.
+             * if (fileStream.Length != binaryReader.ReadInt64()) => Replace binaryReader.ReadInt64() to pass file length check.
+             * fileStream.Seek((long)num2, SeekOrigin.Current); => Use lzstream.Read to seek forward
+             * binaryReader.Dispose(); => Dispose lzstream before fileStream close.
+             */
             try
             {
-                using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
-                {
-                    if (!SaveUtil.IsCompressedSave(fileStream)) return false;
-                    using (var lzstream = new LZ4DecompressionStream(fileStream))
-                    using (BinaryReader binaryReader = new BinaryReader(lzstream))
-                    {
-                        if (!VerifyHeader(binaryReader))
-                        {
-                            Debug.LogError("Invalid game save file");
-                            return false;
-                        }
-                        binaryReader.ReadInt64();
-                        //long length = fileStream.Length;
-                        //if (length != binaryReader.ReadInt64())
-                        //{
-                        //	Debug.LogError("Incomplete game save");
-                        //	return false;
-                        //}
-                        int num = binaryReader.ReadInt32();
-                        if (num < 4)
-                        {
-                            Debug.LogError("Game save is too old");
-                            return false;
-                        }
-                        binaryReader.ReadInt32();
-                        binaryReader.ReadInt32();
-                        binaryReader.ReadInt32();
+                var matcher = new CodeMatcher(instructions, iLGenerator)
+                    .MatchForward(false, new CodeMatch(OpCodes.Newobj, AccessTools.Constructor(typeof(BinaryReader), new Type[] { typeof(FileStream) })))
+                    .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "CreateBinaryReader"))
+                    .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(BinaryReader), "ReadInt64")))
+                    .Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "FileLengthRead"))
+                    .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IDisposable), "Dispose")))
+                    .Advance(1)
+                    .Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "DisposeLzstream")))
+                    .MatchBack(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IO.Stream), "Seek")));
+                if (matcher.IsValid)
+                    matcher.Set(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "ReadSeek"));
+                matcher.Start()
+                    .MatchForward(false, new CodeMatch(OpCodes.Newobj, AccessTools.Constructor(typeof(GameSaveHeader))));
+                if (matcher.IsValid)
+                    matcher.Set(OpCodes.Newobj, AccessTools.Constructor(typeof(CompressionGameSaveHeader))); //ReadHeader
 
-
-                        binaryReader.ReadInt64();
-                        binaryReader.ReadInt64();
-                        int num2 = binaryReader.ReadInt32();
-                        while (num2 > 0)
-                        {
-                            num2 -= lzstream.Read(compressBuffer.outBuffer, 0, num2);
-
-                            //fileStream.Seek((long)num2, SeekOrigin.Current);
-                        }
-                        if (num >= 5)
-                        {
-                            AccountData.NULL.Import(binaryReader);
-                            binaryReader.ReadUInt64();
-                        }
-                        GameMain.data.Import(binaryReader);
-                    }
-
-                    result = true;
-                }
+                EnableDecompress = true;
+                return matcher.InstructionEnumeration();
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                Debug.LogException(exception);
-                result = false;
+                SaveUtil.logger.LogError("LoadCurrentGame_Transpiler failed. Mod version not compatible with game version.");
+                SaveUtil.logger.LogError(ex);
             }
-            return result;
+            return instructions;
         }
 
+        [HarmonyPatch(typeof(GameSave), "ReadHeader"), HarmonyPostfix]
+        static GameSaveHeader ReadHeader_Postfix(GameSaveHeader __result)
+        {
+            if (__result != null)
+                ((CompressionGameSaveHeader)__result).IsCompressed = IsCompressedSave;
+            return __result;
+        }
+
+        public static BinaryReader CreateBinaryReader(FileStream fileStream)
+        {
+            if ((IsCompressedSave = SaveUtil.IsCompressedSave(fileStream)))
+            {
+                UseCompressSave = true;
+                lzstream = new LZ4DecompressionStream(fileStream);
+                return new PeekableReader((LZ4DecompressionStream)lzstream);
+            }
+            else
+            {
+                UseCompressSave = false;
+                fileStream.Seek(0, SeekOrigin.Begin);
+                return new BinaryReader(fileStream);
+            }
+        }
+
+        public static long FileLengthRead(BinaryReader binaryReader)
+        {
+            if (UseCompressSave)
+            {
+                binaryReader.ReadInt64();
+                return lzstream.Length;
+            }
+            else
+                return binaryReader.ReadInt64();
+        }
+
+        public static long ReadSeek(FileStream fileStream, long offset, SeekOrigin origin)
+        {
+            if (UseCompressSave)
+            {
+                while (offset > 0)
+                    offset -= lzstream.Read(compressBuffer.outBuffer, 0, (int)offset);
+                return lzstream.Position;
+            }
+            else
+                return fileStream.Seek(offset, origin);
+        }
     }
 
 }

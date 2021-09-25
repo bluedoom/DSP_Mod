@@ -15,5 +15,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)LZ4CompressionStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LZ4DecompressionStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LZ4Wrap.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)PeekableReader.cs" />
   </ItemGroup>
 </Project>

@@ -20,7 +20,7 @@ namespace LZ4
         public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
 
-        private Stream outStream;
+        readonly Stream outStream;
 
         long totalWrite = 0;
         bool useMultiThread;
@@ -137,7 +137,7 @@ namespace LZ4
 
         void Compress_Internal()
         {
-            var readBuffer = doubleBuffer.ReadBegin();//
+            var readBuffer = doubleBuffer.ReadBegin();
             if (readBuffer.Length > 0)
             {
                 lock (outBuffer)

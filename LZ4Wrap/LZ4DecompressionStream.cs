@@ -15,16 +15,32 @@ namespace LZ4
 
         public override long Length => inStream.Length;
 
-        public override long Position { get=>inStream.Position; set{ long a = value; } }
+        public override long Position 
+        {   get => readPos; 
+            set
+            {
+                if (value < readPos)
+                    ResetStream();
+                else
+                    value -= readPos;
+                byte[] tmpBuffer = new byte[1024];
+                while (value > 0)
+                {
+                    value -= Read(tmpBuffer, 0, (int)(value < 1024 ? value : 1024));
+                }
+            } 
+        }
 
         public Stream inStream;
 
         IntPtr dctx = IntPtr.Zero;
 
-        ByteSpan srcBuffer;
-        ByteSpan dcmpBuffer;
+        readonly ByteSpan srcBuffer;
+        readonly ByteSpan dcmpBuffer;
         private bool decompressFinish = false;
-        long startPos = 0;
+        readonly long startPos = 0;
+        long readPos = 0; //sum of readlen
+
         public LZ4DecompressionStream(Stream inStream,int extraBufferSize = 512*1024)
         {
             this.inStream = inStream;
@@ -44,6 +60,7 @@ namespace LZ4
             srcBuffer.Clear();
             dcmpBuffer.Clear();
             LZ4API.ResetDecompresssCTX(dctx);
+            readPos = 0;
         }
 
         public int Fill()
@@ -91,7 +108,26 @@ namespace LZ4
                 dcmpBuffer.Position = 0;
                 dcmpBuffer.Length = (int)rt.writeLen;
             }
+            readPos += readlen;
             return readlen;
+        }
+
+        public int PeekByte()
+        {
+            if (dcmpBuffer.Length <= dcmpBuffer.Position)
+            {
+                var buffSize = Fill();
+                if (buffSize <= 0) return -1;
+
+                var rt = LZ4API.DecompressUpdateEx(dctx, dcmpBuffer, 0, dcmpBuffer.Capacity, srcBuffer, srcBuffer.Position, buffSize, null);
+                if (rt.expect < 0) throw new Exception(rt.expect.ToString());
+                if (rt.expect == 0) decompressFinish = true;
+
+                srcBuffer.Position += (int)rt.readLen;
+                dcmpBuffer.Position = 0;
+                dcmpBuffer.Length = (int)rt.writeLen;
+            }
+            return dcmpBuffer.Buffer[dcmpBuffer.Position];
         }
 
         public override long Seek(long offset, SeekOrigin origin)
