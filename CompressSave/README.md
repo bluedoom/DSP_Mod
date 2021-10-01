@@ -2,6 +2,7 @@
 ## 更新/ Changes
 ### 1.1.7
   * Fix: 统计面板信息不正确的问题 / statistic panel "Data" is not precise.
+  * 进一步提升保存性能
 
 ### 1.1.6
   * fix memory leak
