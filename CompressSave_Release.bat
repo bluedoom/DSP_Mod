@@ -4,8 +4,8 @@ move "%cd%\CompressSave\Release\LZ4.dll" "%cd%\CompressSave\Release\x64\LZ4.dll"
 echo F| xcopy "LZ4\static\LICENSE" "CompressSave\Release\x64\LICENSE" /y
 
 pushd "CompressSave\Release"
-"H:\Tools\7z\7za.exe" a CompressSave.zip ./x64 ./CompressSave.dll
-"H:\Tools\7z\7za.exe" a CompressSavePack.zip ./x64 ./CompressSave.dll ../icon.png ../manifest.json ../README.md
+"H:\Tools\7z\7za.exe" a CompressSave.zip ./x64 ./CompressSave.dll ./System.Runtime.CompilerServices.Unsafe.dll
+"H:\Tools\7z\7za.exe" a CompressSavePack.zip ./x64 ./CompressSave.dll ./System.Runtime.CompilerServices.Unsafe.dll ../icon.png ../manifest.json ../README.md
 move CompressSave.zip ..\..\CompressSave.zip
 move CompressSavePack.zip ..\..\CompressSavePack.zip
 popd

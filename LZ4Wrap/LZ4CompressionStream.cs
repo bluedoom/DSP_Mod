@@ -187,11 +187,10 @@ namespace LZ4
             throw new NotImplementedException();
         }
 
-        public ByteSpan SwapBuffer(ByteSpan oldBuffer)
+        public void SwapBuffer(ref ByteSpan oldBuffer)
         {
-            var writeBuffer = doubleBuffer.SwapBuffer();
+            oldBuffer = doubleBuffer.SwapBuffer();
             Compress();
-            return writeBuffer;
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -200,7 +199,7 @@ namespace LZ4
             int writeSize = writeBuffer.Write(buffer, offset, count);
             while (count - writeSize > 0)
             {
-                writeBuffer = SwapBuffer(null);
+                SwapBuffer(ref writeBuffer);
                 offset += writeSize;
                 count -= writeSize;
                 writeSize = writeBuffer.Write(buffer, offset, count);

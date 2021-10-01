@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnzipSave", "UnzipSave\UnzipSave.csproj", "{7B39E715-FEF4-4848-B869-F64068CBB3E4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "UnzipSave\Test.csproj", "{7B39E715-FEF4-4848-B869-F64068CBB3E4}"
 	ProjectSection(ProjectDependencies) = postProject
 		{964FA09A-BDEB-4014-A35A-FDF0B00DCFA0} = {964FA09A-BDEB-4014-A35A-FDF0B00DCFA0}
 	EndProjectSection

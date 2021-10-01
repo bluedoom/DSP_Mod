@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace DSP_Plugin
 {
-	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.5")]
+	[BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.6")]
 	public class CompressSave : BaseUnityPlugin
 	{
         Harmony harmony;

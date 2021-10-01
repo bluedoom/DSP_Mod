@@ -1,6 +1,9 @@
 # 存档压缩 CompressSave
 ## 更新/ Changes
-### 1.1.5 (Game Version 0.8.21)
+### 1.1.6
+  * fix memory leak
+
+### 1.1.5 (Game Version 0.8.22)
   * 适配新版本 / Adapt new game release.
   * Thanks [@starfi5h] for
     - PatchSave now use transpiler for better robustness.

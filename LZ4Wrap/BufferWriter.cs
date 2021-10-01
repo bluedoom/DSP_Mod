@@ -3,292 +3,301 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Security;
-
+using System.Runtime.CompilerServices;
 
 namespace LZ4
 {
-    public class BufferWriter : BinaryWriter
+    public unsafe class BufferWriter : BinaryWriter
     {
         ByteSpan currentBuffer;
-		private int position;
-		private int suplusCapacity;
-		byte[] buffer;
 
-		private Encoding _encoding;
+        private Encoding _encoding;
 
-		private Encoder encoder;
+        private Encoder encoder;
 
-		public delegate ByteSpan BufferFullCallback(ByteSpan filledBuffer);
+        public delegate void BufferFullCallback(ref ByteSpan filledBuffer);
 
         BufferFullCallback onBufferFull;
 
-		public BufferWriter (BufferFullCallback callback, ByteSpan byteSpan)
-			:this(callback, byteSpan,new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true))
-		{ 
-			
-		}
+        byte[] Buffer => currentBuffer.Buffer;
 
-		BufferWriter(BufferFullCallback callback,ByteSpan byteSpan ,UTF8Encoding encoding) :base(Stream.Null, encoding)
-		{
-			currentBuffer = byteSpan;
-			onBufferFull = callback;
-			RefreshStatus();
-			_encoding = encoding;
-			encoder = _encoding.GetEncoder();
-		}
+        long SuplusCapacity => endPos - curPos;
 
-		void SwapBuffer()
-		{
-			currentBuffer.Position = 0;
-			currentBuffer.Length = position;
+        //public int Position { get => currentBuffer.Length; set => currentBuffer.Length = value; }
 
-			currentBuffer = onBufferFull(currentBuffer);
-			RefreshStatus();
-		}
+        byte* curPos;
+        byte* endPos;
+        public BufferWriter(BufferFullCallback callback, ByteSpan byteSpan)
+            : this(callback, byteSpan, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true))
+        {
 
-		void RefreshStatus()
-		{
-			position = currentBuffer.Position;
-			suplusCapacity = currentBuffer.Capacity - position;
-			buffer = currentBuffer.Buffer;
-		}
+        }
 
+        BufferWriter(BufferFullCallback callback, ByteSpan byteSpan, UTF8Encoding encoding) : base(Stream.Null, encoding)
+        {
+            currentBuffer = byteSpan;
+            onBufferFull = callback;
+            RefreshStatus();
+            _encoding = encoding;
+            encoder = _encoding.GetEncoder();
+        }
+
+        void SwapBuffer()
+        {
+            currentBuffer.Position = 0;
+            fixed (byte* start = Buffer)
+            {
+                currentBuffer.Length = (int)(curPos - start);
+            }
+
+            onBufferFull(ref currentBuffer);
+            RefreshStatus();
+        }
+
+        void RefreshStatus()
+        {
+            curPos = (byte*)Unsafe.AsPointer(ref Buffer[0]);
+            endPos = (byte*)Unsafe.AsPointer(ref Buffer[Buffer.Length - 1]) + 1;
+        }
 
         void CheckCapacityAndSwap(int requiredCapacity)
         {
-            if( suplusCapacity < requiredCapacity)
+            if (SuplusCapacity < requiredCapacity)
             {
-				SwapBuffer();
+                SwapBuffer();
             }
-			suplusCapacity -= requiredCapacity;
         }
 
         public override void Write(byte value)
         {
-			CheckCapacityAndSwap(1);
-			buffer[position++] = value;
+            CheckCapacityAndSwap(1);
+            *(curPos++) = value;
         }
 
-		public override void Write(bool value) => Write((byte)(value ? 1 : 0));
+        public override void Write(bool value) => Write((byte)(value ? 1 : 0));
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-				SwapBuffer();
+                SwapBuffer();
             }
-			base.Dispose(disposing);
+            base.Dispose(disposing);
         }
 
-		public override void Close()
-		{
-			Dispose(disposing: true);
-		}
+        public override void Close()
+        {
+            Dispose(disposing: true);
+        }
 
-		public override void Flush()
-		{
-			SwapBuffer();
-		}
+        public override void Flush()
+        {
+            SwapBuffer();
+        }
 
-		public override long Seek(int offset, SeekOrigin origin)
-		{
-			throw new NotImplementedException();
-		}
+        public override long Seek(int offset, SeekOrigin origin)
+        {
+            throw new NotImplementedException();
+        }
 
-		public override void Write(sbyte value) => Write((byte)value);
+        public override void Write(sbyte value) => Write((byte)value);
 
-		public override void Write(byte[] _buffer) => Write(_buffer, 0, _buffer.Length);
+        public override void Write(byte[] _buffer) => Write(_buffer, 0, _buffer.Length);
 
 
-		public override void Write(byte[] _buffer, int index, int count)
-		{
-			if (_buffer == null)
-			{
-				throw new ArgumentNullException("buffer");
-			}
-			int writed = 0;
-			while (suplusCapacity <= count)
-			{
-				Array.Copy(_buffer,index + writed, buffer, position, suplusCapacity);
-				writed += suplusCapacity;
-				count -= suplusCapacity;
-				position += suplusCapacity;
-				SwapBuffer();
-			}
-			Array.Copy(_buffer,index + writed, buffer, position, count);
-			position += count;
-			suplusCapacity -= count;
-		}
+        public override void Write(byte[] _buffer, int index, int count)
+        {
+            if (_buffer == null)
+            {
+                throw new ArgumentNullException("buffer");
+            }
+            fixed (byte* start = _buffer)
+            {
+                byte* srcPos = start + index;
+                while (SuplusCapacity <= count)
+                {
+                    int dstSuplus = (int)SuplusCapacity;
+                    //Array.Copy(_buffer, index + writed, Buffer, Position, SuplusCapacity);
+                    Unsafe.CopyBlock(curPos, srcPos, (uint)dstSuplus);
+                    count -= dstSuplus;
+                    srcPos += dstSuplus;
+                    curPos = endPos;
+                    SwapBuffer();
+                }
+                Unsafe.CopyBlock(curPos, srcPos, (uint)count);
+                curPos += count;
+            }
+        }
 
-		public unsafe override void Write(char ch)
-		{
-			if (char.IsSurrogate(ch))
-			{
-				throw new ArgumentException("Arg_SurrogatesNotAllowedAsSingleChar");
-			}
+        public unsafe override void Write(char ch)
+        {
+            if (char.IsSurrogate(ch))
+            {
+                throw new ArgumentException("Arg_SurrogatesNotAllowedAsSingleChar");
+            }
 
-			if (suplusCapacity < 4)
-				SwapBuffer();
+            CheckCapacityAndSwap(4);
 
-			int writed = 0;
-			fixed (byte* bytes = buffer)
-			{
-				writed = encoder.GetBytes(&ch, 1, bytes + position, suplusCapacity, flush: true);
-			}
-			position += writed;
-			suplusCapacity -= writed;
-		}
+            curPos += encoder.GetBytes(&ch, 1, curPos, (int)SuplusCapacity, flush: true);
+        }
 
-		//slow
-		public override void Write(char[] chars)
-		{
-			if (chars == null)
-			{
-				throw new ArgumentNullException("chars");
-			}
-			byte[] bytes = _encoding.GetBytes(chars, 0, chars.Length);
-			Write(bytes);
-		}
-		
-		public unsafe override void Write(double value)
-		{
-			CheckCapacityAndSwap(8);
-			
-			ulong num = (ulong)(*(long*)(&value));
-			buffer[position++] = (byte)num;
-			buffer[position++] = (byte)(num >> 8);
-			buffer[position++] = (byte)(num >> 16);
-			buffer[position++] = (byte)(num >> 24);
-			buffer[position++] = (byte)(num >> 32);
-			buffer[position++] = (byte)(num >> 40);
-			buffer[position++] = (byte)(num >> 48);
-			buffer[position++] = (byte)(num >> 56);
-		}
+        //slow
+        public override void Write(char[] chars)
+        {
+            if (chars == null)
+            {
+                throw new ArgumentNullException("chars");
+            }
+            byte[] bytes = _encoding.GetBytes(chars, 0, chars.Length);
+            Write(bytes);
+        }
 
-		//slow
-		public override void Write(decimal d)
-		{
-			CheckCapacityAndSwap(16) ;
-			int[] bits = decimal.GetBits(d);
+        public unsafe override void Write(double value)
+        {
+            CheckCapacityAndSwap(8);
+            ulong num = (ulong)(*(long*)(&value));
+            *(curPos++) = (byte)num;
+            *(curPos++) = (byte)(num >> 8);
+            *(curPos++) = (byte)(num >> 16);
+            *(curPos++) = (byte)(num >> 24);
+            *(curPos++) = (byte)(num >> 32);
+            *(curPos++) = (byte)(num >> 40);
+            *(curPos++) = (byte)(num >> 48);
+            *(curPos++) = (byte)(num >> 56);
+        }
 
-			Write(bits[0]);
-			Write(bits[1]);
-			Write(bits[2]);
-			Write(bits[3]);
-		}
+        //slow
+        public override void Write(decimal d)
+        {
+            CheckCapacityAndSwap(16);
+            int[] bits = decimal.GetBits(d);
 
-		
-		public override void Write(short value)
-		{
-			CheckCapacityAndSwap(2);
-			buffer[position++] = (byte)value;
-			buffer[position++] = (byte)(value >> 8);
-		}
+            Write(bits[0]);
+            Write(bits[1]);
+            Write(bits[2]);
+            Write(bits[3]);
+        }
 
-		public override void Write(ushort value)
-		{
-			CheckCapacityAndSwap(2);
-			buffer[position++] = (byte)value;
-			buffer[position++] = (byte)(value >> 8);
-		}
 
-		
-		public override void Write(int value)
-		{
-			CheckCapacityAndSwap(4);
-			buffer[position++] = (byte)value;
-			buffer[position++] = (byte)(value >> 8);
-			buffer[position++] = (byte)(value >> 16);
-			buffer[position++] = (byte)(value >> 24);
-		}
+        public override void Write(short value)
+        {
+            CheckCapacityAndSwap(2);
+            *(curPos++) = (byte)value;
+            *(curPos++) = (byte)(value >> 8);
+        }
 
-		public override void Write(uint value)
-		{
-			CheckCapacityAndSwap(4);
-			buffer[position++] = (byte)value;
-			buffer[position++] = (byte)(value >> 8);
-			buffer[position++] = (byte)(value >> 16);
-			buffer[position++] = (byte)(value >> 24);
-		}
+        public override void Write(ushort value)
+        {
+            CheckCapacityAndSwap(2);
+            *(curPos++) = (byte)value;
+            *(curPos++) = (byte)(value >> 8);
+        }
 
-		
-		public override void Write(long value)
-		{
-			CheckCapacityAndSwap(8);
-			buffer[position++] = (byte)value;
-			buffer[position++] = (byte)(value >> 8);
-			buffer[position++] = (byte)(value >> 16);
-			buffer[position++] = (byte)(value >> 24);
-			buffer[position++] = (byte)(value >> 32);
-			buffer[position++] = (byte)(value >> 40);
-			buffer[position++] = (byte)(value >> 48);
-			buffer[position++] = (byte)(value >> 56);
-		}
 
-		public override void Write(ulong value)
-		{
-			CheckCapacityAndSwap(8);
-			buffer[position++] = (byte)value;
-			buffer[position++] = (byte)(value >> 8);
-			buffer[position++] = (byte)(value >> 16);
-			buffer[position++] = (byte)(value >> 24);
-			buffer[position++] = (byte)(value >> 32);
-			buffer[position++] = (byte)(value >> 40);
-			buffer[position++] = (byte)(value >> 48);
-			buffer[position++] = (byte)(value >> 56);
-		}
+        public override void Write(int value)
+        {
+            if (SuplusCapacity < 4)
+            {
+                SwapBuffer();
+            }
+            *(curPos++) = (byte)value;
+            *(curPos++) = (byte)(value >> 8);
+            *(curPos++) = (byte)(value >> 16);
+            *(curPos++) = (byte)(value >> 24);
+        }
 
-		public unsafe override void Write(float value)
-		{
-			CheckCapacityAndSwap(4);
-			uint num = *(uint*)(&value);
-			buffer[position++] = (byte)num;
-			buffer[position++] = (byte)(num >> 8);
-			buffer[position++] = (byte)(num >> 16);
-			buffer[position++] = (byte)(num >> 24);
-		}
+        public override void Write(uint value)
+        {
+            CheckCapacityAndSwap(4);
+            *(curPos++) = (byte)value;
+            *(curPos++) = (byte)(value >> 8);
+            *(curPos++) = (byte)(value >> 16);
+            *(curPos++) = (byte)(value >> 24);
+        }
 
-		
-		//slow
-		public unsafe override void Write(string value)
-		{
-			if (value == null)
-			{
-				throw new ArgumentNullException("value");
-			}
-			int byteCount = _encoding.GetByteCount(value);
-			Write7BitEncodedInt(byteCount);
-			if (byteCount <= suplusCapacity)
-			{
-				int Wcount = _encoding.GetBytes(value, 0, value.Length, buffer, position);
-				suplusCapacity -= Wcount;
-				position += Wcount;
-				//Console.WriteLine($"Using quick write!");
-				return;
-			}
 
-			int charIndex = 0;
-			bool completed;
-			do
-			{
-				fixed (char* chars = value)
-				{
-					fixed (byte* bytes = buffer)
-					{
-						encoder.Convert(chars + charIndex, value.Length - charIndex,
-							bytes + position, suplusCapacity, false,
-							out int charsConsumed, out int bytesWritten, out completed);
-						charIndex += charsConsumed;						
-						position += bytesWritten;
-						suplusCapacity -= bytesWritten;
-						//Console.WriteLine($"charsConsumed{charsConsumed} charIndex{charIndex} bytesWritten{bytesWritten} position{position} suplusCapacity{suplusCapacity}");
-					}
-				}
-				if (suplusCapacity <= 0) 
-					SwapBuffer();	
-			} while (!completed);
-			encoder.Reset(); //flush
-		}
+        public override void Write(long value)
+        {
+            CheckCapacityAndSwap(8);
+            *(curPos++) = (byte)value;
+            *(curPos++) = (byte)(value >> 8);
+            *(curPos++) = (byte)(value >> 16);
+            *(curPos++) = (byte)(value >> 24);
+            *(curPos++) = (byte)(value >> 32);
+            *(curPos++) = (byte)(value >> 40);
+            *(curPos++) = (byte)(value >> 48);
+            *(curPos++) = (byte)(value >> 56);
+        }
+
+        public override void Write(ulong value)
+        {
+            CheckCapacityAndSwap(8);
+            *(curPos++) = (byte)value;
+            *(curPos++) = (byte)(value >> 8);
+            *(curPos++) = (byte)(value >> 16);
+            *(curPos++) = (byte)(value >> 24);
+            *(curPos++) = (byte)(value >> 32);
+            *(curPos++) = (byte)(value >> 40);
+            *(curPos++) = (byte)(value >> 48);
+            *(curPos++) = (byte)(value >> 56);
+        }
+
+        public unsafe override void Write(float value)
+        {
+            if (SuplusCapacity < 4)
+            {
+                SwapBuffer();
+            }
+            uint num = *(uint*)(&value);
+            *(curPos++) = (byte)num;
+            *(curPos++) = (byte)(num >> 8);
+            *(curPos++) = (byte)(num >> 16);
+            *(curPos++) = (byte)(num >> 24);
+        }
+
+
+        //slow
+        public unsafe override void Write(string value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException("value");
+            }
+            int byteCount = _encoding.GetByteCount(value);
+            Write7BitEncodedInt(byteCount);
+            {
+                var dstSuplus = (int)SuplusCapacity;
+                if (byteCount <= dstSuplus)
+                {
+                    fixed (char* start = value)
+                    {
+                        int Wcount = _encoding.GetBytes(start, value.Length, curPos, dstSuplus);
+                        curPos += Wcount;
+                        //Console.WriteLine($"Using quick write!");
+                        return;
+                    }
+                }
+            }
+
+            int charIndex = 0;
+            bool completed;
+            fixed (char* chars = value)
+            {
+                do
+                {
+                    encoder.Convert(chars + charIndex, value.Length - charIndex,
+                        curPos, (int)SuplusCapacity, false,
+                        out int charsConsumed, out int bytesWritten, out completed);
+                    charIndex += charsConsumed;
+                    curPos += bytesWritten;
+                    //Console.WriteLine($"charsConsumed{charsConsumed} charIndex{charIndex} bytesWritten{bytesWritten} position{position} suplusCapacity{suplusCapacity}");
+
+                    if (SuplusCapacity <= 0)
+                        SwapBuffer();
+                } while (!completed);
+            }
+            encoder.Reset(); //flush
+        }
 
 
 
