@@ -18,9 +18,7 @@ namespace LZ4
         public override long Length => totalWrite;
 
         // only use for game statistics
-        public override long Position { get => inputSum; set => inputSum = value; }
-
-        long inputSum = 0;
+        public override long Position { get => BufferWriter.WriteSum; set => new NotImplementedException(); }
 
         readonly Stream outStream;
 
@@ -75,23 +73,9 @@ namespace LZ4
             }
             return new CompressBuffer();
         }
-
-        //private string _mA;
-
-        //private string a
-        //{
-        //    get => _mA;
-        //    set
-        //    {
-        //        if (_mA == "wait" && value == "end")
-        //        {
-        //            double
-        //        }
-        //    }
-        //}
-        public BufferWriter CreateBufferedWriter()
-        => new BufferWriter(SwapBuffer, doubleBuffer.writeBuffer);
-
+       
+        public BufferWriter BufferWriter => bfferWriter;
+        BufferWriter bfferWriter;
 
         public LZ4CompressionStream(Stream outStream, CompressBuffer compressBuffer,bool useMultiThread)
         {
@@ -107,18 +91,19 @@ namespace LZ4
                 compressThread = new Thread(() => CompressAsync());
                 compressThread.Start();
             }
+
         }
 
         void InitBuffer(byte[] readBuffer, byte[] writeBuffer, byte[] outBuffer)
         {
-            doubleBuffer = new DoubleBuffer(readBuffer ?? new byte[4 * MB], writeBuffer ?? new byte[4 * MB]);
+            doubleBuffer = new DoubleBuffer(readBuffer ?? new byte[4 * MB], writeBuffer ?? new byte[4 * MB], Compress);
             this.outBuffer = outBuffer ?? new byte[LZ4API.CalCompressOutBufferSize(writeBuffer.Length)];
+            bfferWriter = new BufferWriter(doubleBuffer);
         }
 
         public override void Flush()
         {
             doubleBuffer.SwapBuffer();
-            Compress();
             if(useMultiThread)
             {
                 doubleBuffer.WaitReadEnd();
@@ -139,15 +124,15 @@ namespace LZ4
 
         void Compress_Internal()
         {
-            var readBuffer = doubleBuffer.ReadBegin();
-            if (readBuffer.Length > 0)
+            var consumeBuffer = doubleBuffer.ReadBegin();
+            if (consumeBuffer.Length > 0)
             {
                 lock (outBuffer)
                 {
                     long writeSize = 0;
                     try
                     {
-                        writeSize = LZ4API.CompressUpdateEx(cctx, outBuffer, 0, readBuffer.Buffer, 0, readBuffer.Length);
+                        writeSize = LZ4API.CompressUpdateEx(cctx, outBuffer, 0, consumeBuffer.Buffer, 0, consumeBuffer.Length);
                         HandleError(writeSize);
                     }
                     finally
@@ -187,24 +172,20 @@ namespace LZ4
             throw new NotImplementedException();
         }
 
-        public void SwapBuffer(ref ByteSpan oldBuffer)
-        {
-            oldBuffer = doubleBuffer.SwapBuffer();
-            Compress();
-        }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            var writeBuffer = doubleBuffer.writeBuffer;
-            int writeSize = writeBuffer.Write(buffer, offset, count);
-            while (count - writeSize > 0)
-            {
-                SwapBuffer(ref writeBuffer);
-                offset += writeSize;
-                count -= writeSize;
-                writeSize = writeBuffer.Write(buffer, offset, count);
-            }
-            inputSum += count;
+            BufferWriter.Write(buffer, offset, count);
+            //var writeBuffer = doubleBuffer.writeBuffer;
+            //int writeSize = writeBuffer.Write(buffer, offset, count);
+            //while (count - writeSize > 0)
+            //{
+            //    SwapBuffer(ref writeBuffer);
+            //    offset += writeSize;
+            //    count -= writeSize;
+            //    writeSize = writeBuffer.Write(buffer, offset, count);
+            //}
+            //inputSum += count;
         }
 
         protected void FreeContext()
@@ -218,14 +199,16 @@ namespace LZ4
         {
             if(!closed)
             {
+                BufferWriter.Close();
                 closed = true;
                 //Console.WriteLine($"FLUSH");
 
                 Flush();
-                stopWorker = true;
-                //Debug.Log($"SwapBuffer");
 
+                // try stop the worker
+                stopWorker = true;
                 doubleBuffer.SwapBuffer();
+
                 long size = LZ4API.CompressEnd(cctx, outBuffer, outBuffer.Length);
                 //Debug.Log($"End");
                 outStream.Write(outBuffer, 0, (int)size);

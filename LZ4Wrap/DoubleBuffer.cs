@@ -13,8 +13,8 @@ namespace LZ4
         public int Length;
         public int Capacity;
         public int IdleCapacity => Capacity - Length;
-
         public int Position;
+
         public ByteSpan(byte[] buffer)
         {
             Buffer = buffer;
@@ -44,6 +44,30 @@ namespace LZ4
         public static implicit operator byte[](ByteSpan bs) => bs.Buffer;
     }
 
+    public struct ReadOnlySpan
+    {
+        public readonly int Length;
+        public readonly byte[] Buffer;
+        public int Position;
+
+        public ReadOnlySpan(byte[] buffer, int length)
+        {
+            Buffer = buffer;
+            Length = length;
+            Position = 0;
+        }
+
+        public int Read(byte[] dst, int offset, int count)
+        {
+            count = Math.Min(Length - Position, count);
+            Array.Copy(Buffer, Position, dst, offset, count);
+            Position += count;
+            return count;
+        }
+
+        public static implicit operator byte[](ReadOnlySpan s) => s.Buffer;
+    }
+
     public class DoubleBuffer
     {
         public const int MB = 1024 * 1024;
@@ -51,19 +75,21 @@ namespace LZ4
         public ByteSpan writeBuffer;
         public ByteSpan readBuffer;
         private ByteSpan midBuffer;
+        private Action onReadBufferReady;
 
-        Semaphore write = new Semaphore(1, 1);
-        Semaphore read = new Semaphore(0, 1);
+        Semaphore readEnd = new Semaphore(1, 1);
+        Semaphore writeEnd = new Semaphore(0, 1);
 
-        public DoubleBuffer(byte[] readBuffer, byte[] writeBuffer)
+        public DoubleBuffer(byte[] readBuffer, byte[] writeBuffer, Action onReadBufferReady)
         {
+            this.onReadBufferReady = onReadBufferReady;
             this.midBuffer = new ByteSpan(readBuffer);
             this.writeBuffer = new ByteSpan(writeBuffer);
         }
 
         public ByteSpan ReadBegin()
         {
-            read.WaitOne();
+            writeEnd.WaitOne();
             return readBuffer;
         }
 
@@ -72,25 +98,29 @@ namespace LZ4
             readBuffer.Clear();
             midBuffer = readBuffer;
             readBuffer = null;
-            write.Release();
+            readEnd.Release();
         }
-
-        public ByteSpan SwapBuffer()
+        /// <summary>
+        /// swap current write buffer to read and wait a new write buffer
+        /// </summary>
+        /// <returns> write buffer </returns>
+        public ByteSpan SwapBuffer(bool triggerEvent = true)
         {
-            var buffer = SwapBegin();
+            var write = SwapBegin();
             SwapEnd();
-            return buffer;
+            onReadBufferReady?.Invoke();
+            return write;
         }
 
         public void WaitReadEnd()
         {
-            write.WaitOne();
-            write.Release();
+            readEnd.WaitOne();
+            readEnd.Release();
         }
 
         public ByteSpan SwapBegin()
         {
-            write.WaitOne();
+            readEnd.WaitOne();
             readBuffer = writeBuffer;
             writeBuffer = midBuffer;
             midBuffer = null;
@@ -99,7 +129,7 @@ namespace LZ4
 
         public void SwapEnd()
         {
-            read.Release();
+            writeEnd.Release();
         }
     }
 }

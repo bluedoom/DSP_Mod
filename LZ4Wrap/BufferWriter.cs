@@ -9,34 +9,35 @@ namespace LZ4
 {
     public unsafe class BufferWriter : BinaryWriter
     {
-        ByteSpan currentBuffer;
+        ByteSpan currentBuffer => doubleBuffer.writeBuffer;
+
+        DoubleBuffer doubleBuffer;
 
         private Encoding _encoding;
 
         private Encoder encoder;
 
-        public delegate void BufferFullCallback(ref ByteSpan filledBuffer);
-
-        BufferFullCallback onBufferFull;
-
         byte[] Buffer => currentBuffer.Buffer;
 
         long SuplusCapacity => endPos - curPos;
 
-        //public int Position { get => currentBuffer.Length; set => currentBuffer.Length = value; }
+        long swapedBytes = 0;
+
+        public long WriteSum => swapedBytes + curPos - startPos;
 
         byte* curPos;
         byte* endPos;
-        public BufferWriter(BufferFullCallback callback, ByteSpan byteSpan)
-            : this(callback, byteSpan, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true))
+        byte* startPos;
+        public BufferWriter(DoubleBuffer doubleBuffer)
+            : this(doubleBuffer, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true))
         {
 
         }
 
-        BufferWriter(BufferFullCallback callback, ByteSpan byteSpan, UTF8Encoding encoding) : base(Stream.Null, encoding)
+        BufferWriter(DoubleBuffer buffer , UTF8Encoding encoding) : base(Stream.Null, encoding)
         {
-            currentBuffer = byteSpan;
-            onBufferFull = callback;
+            swapedBytes = 0;
+            doubleBuffer = buffer;
             RefreshStatus();
             _encoding = encoding;
             encoder = _encoding.GetEncoder();
@@ -45,18 +46,17 @@ namespace LZ4
         void SwapBuffer()
         {
             currentBuffer.Position = 0;
-            fixed (byte* start = Buffer)
-            {
-                currentBuffer.Length = (int)(curPos - start);
-            }
 
-            onBufferFull(ref currentBuffer);
+            currentBuffer.Length = (int)(curPos - startPos);
+            swapedBytes += currentBuffer.Length;
+            doubleBuffer.SwapBuffer();
             RefreshStatus();
         }
 
         void RefreshStatus()
         {
-            curPos = (byte*)Unsafe.AsPointer(ref Buffer[0]);
+            startPos = (byte*)Unsafe.AsPointer(ref Buffer[0]);
+            curPos = startPos;
             endPos = (byte*)Unsafe.AsPointer(ref Buffer[Buffer.Length - 1]) + 1;
         }
 

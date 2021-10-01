@@ -25,8 +25,8 @@ namespace UnzipSave
             using (MemoryStream memoryStream = new MemoryStream(1024 * 1024 * 8))
             {
                 using (LZ4CompressionStream cp = new LZ4CompressionStream(memoryStream, LZ4CompressionStream.CreateBuffer(1024), true))
-                using (var w = cp.CreateBufferedWriter())
                 {
+                    var w = cp.BufferWriter;
                     for (int i = 0; i < 5000; i++)
                     {
                         w.Write(ints[i]);
