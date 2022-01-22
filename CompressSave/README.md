@@ -1,5 +1,8 @@
 # 存档压缩 CompressSave
 ## 更新/ Changes
+### 1.1.8
+  * 适配 0.9.24.11029
+
 ### 1.1.7
   * Fix: 统计面板信息不正确的问题 / statistic panel "Data" is not precise.
   * 进一步提升保存性能

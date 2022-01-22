@@ -147,7 +147,7 @@ namespace DSP_Plugin
         [HarmonyTranspiler]
         [HarmonyPatch(typeof(GameSave), "LoadCurrentGame")]
         [HarmonyPatch(typeof(GameSave), "LoadGameDesc")]
-        [HarmonyPatch(typeof(GameSave), "ReadHeader")]
+        [HarmonyPatch(typeof(GameSave), "ReadHeaderAndDesc")]
         static IEnumerable<CodeInstruction> LoadCurrentGame_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator iLGenerator)
         {
             /* using (BinaryReader binaryReader = new BinaryReader(fileStream)) => Create lzstream and replace binaryReader.
@@ -190,12 +190,11 @@ namespace DSP_Plugin
             return instructions;
         }
 
-        [HarmonyPatch(typeof(GameSave), "ReadHeader"), HarmonyPostfix]
-        static GameSaveHeader ReadHeader_Postfix(GameSaveHeader __result)
+        [HarmonyPatch(typeof(GameSave), "ReadHeaderAndDesc"), HarmonyPostfix]
+        static void ReadHeader_Postfix(string __0, bool __1,ref GameSaveHeader header,object __3)
         {
-            if (__result != null)
-                ((CompressionGameSaveHeader)__result).IsCompressed = IsCompressedSave;
-            return __result;
+            if (header != null)
+                ((CompressionGameSaveHeader)header).IsCompressed = IsCompressedSave;
         }
 
         public static BinaryReader CreateBinaryReader(FileStream fileStream)

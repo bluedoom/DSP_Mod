@@ -19,7 +19,7 @@ namespace DSP_Plugin
         [HarmonyPatch(typeof(UILoadGameWindow), "OnSelectedChange")]
         static IEnumerable<CodeInstruction> OnSelectedChange_Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
         {
-            var ReadHeader = typeof(GameSave).GetMethod("ReadHeader", BindingFlags.Static | BindingFlags.Public);
+            var ReadHeader = typeof(GameSave).GetMethod("ReadHeaderAndDesc", BindingFlags.Static | BindingFlags.Public);
             if (ReadHeader == null) return instructions;
             var codes = new List<CodeInstruction>(instructions);
             for (int i = 0; i < codes.Count; i++)
