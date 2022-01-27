@@ -25,6 +25,17 @@ namespace LZ4
 
         public long WriteSum => swapedBytes + curPos - startPos;
 
+        public override Stream BaseStream => null;
+        public override void Write(char[] chars, int index, int count)
+        {
+            if (chars == null)
+            {
+                throw new ArgumentNullException("chars");
+            }
+            byte[] bytes = _encoding.GetBytes(chars, index, count);
+            Write(bytes);
+        }
+
         byte* curPos;
         byte* endPos;
         byte* startPos;

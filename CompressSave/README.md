@@ -1,5 +1,12 @@
 # 存档压缩 CompressSave
+请注意时常使用原存档按钮备份非压缩存档！！！
+Please pay attention to backup uncompressed file use orignal save button usually！！！
+
 ## 更新/ Changes
+### 1.1.9
+  * 因为对机甲DIY系统支持有问题，暂时关闭存储压缩功能
+  * CompressSave is temporarily disabled due to some error with the DIY system.
+
 ### 1.1.8
   * 适配 0.9.24.11029
 

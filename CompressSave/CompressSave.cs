@@ -88,7 +88,7 @@ namespace DSP_Plugin
                     .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IDisposable), "Dispose")))
                     .Advance(1)
                     .Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "DisposeLzstream")));
-                EnableCompress = true;
+                EnableCompress = false;
                 return matcher.InstructionEnumeration();
             }
             catch (Exception ex)
