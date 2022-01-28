@@ -21,8 +21,8 @@ namespace UnzipSave
             var floats = new float[5000].Select(_ => rand.Next()/10000f).ToArray();
             var doubles = new double[5000].Select(_ => rand.NextDouble()).ToArray();
             var longs = new long[5000].Select(_ => rand.Next() * (long)rand.Next() ).ToArray();
-            var bytes = new byte[20000]; rand.NextBytes(bytes);
-            using (MemoryStream memoryStream = new MemoryStream(1024 * 1024 * 8))
+            var bytes = new byte[8096]; rand.NextBytes(bytes);
+            using (MemoryStream memoryStream = new MemoryStream(1024 * 1024 * 32))
             {
                 using (LZ4CompressionStream cp = new LZ4CompressionStream(memoryStream, LZ4CompressionStream.CreateBuffer(1024), true))
                 {
@@ -36,6 +36,9 @@ namespace UnzipSave
                         w.Write(floats[i]);
 
                     }
+
+                    cp.BufferWriter.Flush();
+                    cp.Write(bytes,0,bytes.Length);
                     for (int i = 0; i < 5000; i++)
                     {
                         w.Write((sbyte)bytes[i]);
@@ -67,6 +70,7 @@ namespace UnzipSave
                             br.ReadSingle() == floats[i])
                             );
                     }
+                    Debug.Assert(br.ReadBytes(bytes.Length).SequenceEqual(bytes));
                     for (int i = 0; i < 5000; i++)
                     {
                         Debug.Assert(
@@ -77,7 +81,7 @@ namespace UnzipSave
                             br.ReadUInt64() == (ulong)longs[i])
                             );
                     }
-                    Debug.Assert(br.ReadBytes(20000).SequenceEqual(bytes));
+                    Debug.Assert(br.ReadBytes(bytes.Length).SequenceEqual(bytes));
                     for (int i = 0; i < 100; i++)
                     {
                         Debug.Assert(
@@ -94,7 +98,7 @@ namespace UnzipSave
 
         static void Main(string[] args)
         {
-            try
+            //try
             {
                 TestMe();
                 //string dir = Path.GetDirectoryName(args[0]);
@@ -117,10 +121,10 @@ namespace UnzipSave
                 //}
                 //Console.WriteLine($"Sucess:{outPath}");
             }
-            catch(Exception e)
-            {
-                Console.WriteLine("Failed:",e.ToString());
-            }
+            //catch(Exception e)
+            //{
+            //    Console.WriteLine("Failed:",e.ToString());
+            //}
 
             Console.ReadLine();
         }

@@ -98,7 +98,7 @@ namespace LZ4
         {
             doubleBuffer = new DoubleBuffer(readBuffer ?? new byte[4 * MB], writeBuffer ?? new byte[4 * MB], Compress);
             this.outBuffer = outBuffer ?? new byte[LZ4API.CalCompressOutBufferSize(writeBuffer.Length)];
-            bfferWriter = new BufferWriter(doubleBuffer);
+            bfferWriter = new BufferWriter(doubleBuffer,this);
         }
 
         public override void Flush()

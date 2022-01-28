@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace DSP_Plugin
 {
-    [BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.7")]
+    [BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.10")]
     public class CompressSave : BaseUnityPlugin
     {
         Harmony harmony;
@@ -88,7 +88,7 @@ namespace DSP_Plugin
                     .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(System.IDisposable), "Dispose")))
                     .Advance(1)
                     .Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PatchSave), "DisposeLzstream")));
-                EnableCompress = false;
+                EnableCompress = true;
                 return matcher.InstructionEnumeration();
             }
             catch (Exception ex)

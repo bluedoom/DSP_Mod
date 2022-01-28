@@ -3,6 +3,11 @@
 Please pay attention to backup uncompressed file use orignal save button usually！！！
 
 ## 更新/ Changes
+### 1.1.10
+  * 修复1.1.8使用DIY系统存档损坏问题，已经损坏的存档可以使用 [Fix118] mod自行修复
+  * Fix 1.1.8 Archive corruption with DIY System, corrupted archives can be fixed by using [Fix118] mod
+[Fix118]:https://github.com/bluedoom/DSP_Mod/blob/master/Fix118/README.MD
+
 ### 1.1.9
   * 因为对机甲DIY系统支持有问题，暂时关闭存储压缩功能
   * CompressSave is temporarily disabled due to some error with the DIY system.

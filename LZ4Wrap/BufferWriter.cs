@@ -25,7 +25,8 @@ namespace LZ4
 
         public long WriteSum => swapedBytes + curPos - startPos;
 
-        public override Stream BaseStream => null;
+        public override Stream BaseStream => _baseStream;
+
         public override void Write(char[] chars, int index, int count)
         {
             if (chars == null)
@@ -39,14 +40,17 @@ namespace LZ4
         byte* curPos;
         byte* endPos;
         byte* startPos;
-        public BufferWriter(DoubleBuffer doubleBuffer)
-            : this(doubleBuffer, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true))
+        private Stream _baseStream;
+
+        public BufferWriter(DoubleBuffer doubleBuffer, LZ4CompressionStream outStream)
+            : this(doubleBuffer, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true), outStream)
         {
 
         }
 
-        BufferWriter(DoubleBuffer buffer , UTF8Encoding encoding) : base(Stream.Null, encoding)
+        BufferWriter(DoubleBuffer buffer , UTF8Encoding encoding, LZ4CompressionStream outStream) : base(Stream.Null, encoding)
         {
+            _baseStream = outStream;
             swapedBytes = 0;
             doubleBuffer = buffer;
             RefreshStatus();
@@ -297,7 +301,7 @@ namespace LZ4
                 do
                 {
                     encoder.Convert(chars + charIndex, value.Length - charIndex,
-                        curPos, (int)SuplusCapacity, false,
+                        curPos, (int)SuplusCapacity, true,
                         out int charsConsumed, out int bytesWritten, out completed);
                     charIndex += charsConsumed;
                     curPos += bytesWritten;

@@ -358,8 +358,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsyncUpdate.cs" />
-    <Compile Include="CargeTrafficPatch.cs" />
     <Compile Include="MTRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

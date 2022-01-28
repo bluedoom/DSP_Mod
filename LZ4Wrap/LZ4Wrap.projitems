@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)BlackHoleStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)BufferedStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BufferWriter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DoubleBuffer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LZ4CompressionStream.cs" />
