@@ -1,8 +1,9 @@
 # Fix118
-# Ê¹ÓÃ·½Ê½£º°Ñmod·Åµ½ "BepInEx/plugins"£¬¼ÓÔØ´íÎó´æµµ£¬ÖØĞÂ±£´æ£¬Ö®ºóĞ¶ÔØ¸Ãmod¡£
-Õâ¸öModÓÃÓÚĞŞ¸´´æµµÑ¹Ëõ1.1.8°æ±¾µ¼ÖÂµÄ´æµµËğ»µÎÊÌâ£¬Ëü»áÉ¾³ıDIY×°¼×Êı¾İ¡£
+# ä½¿ç”¨æ–¹å¼ï¼šæŠŠmodæ”¾åˆ° "BepInEx/plugins"ï¼ŒåŠ è½½é”™è¯¯å­˜æ¡£ï¼Œé‡æ–°ä¿å­˜ï¼Œä¹‹åå¸è½½è¯¥modã€‚
+è¿™ä¸ªModç”¨äºä¿®å¤å­˜æ¡£å‹ç¼©1.1.8ç‰ˆæœ¬å¯¼è‡´çš„å­˜æ¡£æŸåé—®é¢˜ï¼Œå®ƒä¼šåˆ é™¤DIYè£…ç”²æ•°æ®ã€‚
 
-# How To Use£ºput the mod in "BepInEx/plugins";Load the error archive and save it again; Then uninstall the mod.  
+# How To Useï¼šput the mod in "BepInEx/plugins";Load the error archive and save it again; Then uninstall the mod.  
 This Mod Only Use to Fix CompressSave 1.1.8 Broken Save.
 It will remove some DIY ammor data.
 
+https://github.com/bluedoom/DSP_Mod/releases/tag/1.1.10
