@@ -3,6 +3,8 @@
 Please pay attention to backup uncompressed file use orignal save button usually！！！
 
 ## 更新/ Changes
+### 1.1.11
+  * fix 1.1.10打包失败
 ### 1.1.10
   * 修复1.1.8使用DIY系统存档损坏问题，已经损坏的存档可以使用[Fix118]修复
   * Fix 1.1.8 Archive corruption with DIY System, corrupted archives can be fixed by using [Fix118] mod
