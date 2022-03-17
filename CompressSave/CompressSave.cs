@@ -11,9 +11,11 @@ using UnityEngine;
 
 namespace DSP_Plugin
 {
-    [BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", "1.1.10")]
+    [BepInPlugin("com.bluedoom.plugin.Dyson.CompressSave", "CompressSave", VERSION)]
     public class CompressSave : BaseUnityPlugin
     {
+        public const string VERSION = "1.1.11";
+
         Harmony harmony;
         public void Awake()
         {
